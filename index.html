@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Студентам — Старт в Ареале</title>
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ============ 1. HERO (Figma 8171:62339 / 768: 8171:63241 / 375: Main Frame) ============ -->
+<section class="screen hero" id="hero" data-screen="hero">
+  <div class="hero__bg"><img src="assets/hero.jpg" alt="" fetchpriority="high"></div>
+  <div class="hero__shade"></div>
+
+  <header class="hdr">
+    <a class="hdr__logo" href="#" aria-label="Ареал"><img src="assets/logo-header.svg" alt="Ареал" width="78" height="28"></a>
+    <nav class="hdr__nav" aria-label="Основное меню">
+      <a href="#">Карьера</a><a href="#">Вакансии</a><a href="#">Старт в Ареале</a><a href="#">Контакты</a>
+    </nav>
+    <a class="hdr__cta btn btn--glass-dark" href="#">Связаться с нами</a>
+    <button class="hdr__burger" type="button" aria-label="Меню"><img src="assets/icon-menu.svg" alt="" width="20" height="20"></button>
+  </header>
+
+  <nav class="crumbs" aria-label="Хлебные крошки">
+    <a class="crumbs__back" href="#"><img src="assets/chevron-left-crumb.svg" alt="" width="12" height="12">Старт в Ареале</a>
+    <span class="crumbs__full">
+      <a href="#">Главная</a><img src="assets/chevron-right-crumb.svg" alt="" width="12" height="12">
+      <a href="#">Старт в Ареале</a><img src="assets/chevron-right-crumb.svg" alt="" width="12" height="12">
+      <span>Студентам</span>
+    </span>
+  </nav>
+
+  <h1 class="hero__title">Начни свой путь в&nbsp;Ареале <br class="br-d">еще во&nbsp;время учебы</h1>
+
+  <div class="hero__bottom">
+    <div class="hero__tabs" role="tablist" aria-label="Аудитория">
+      <a class="tab tab--glass" href="#">школьникам</a>
+      <a class="tab tab--glass is-active" href="#" aria-current="page">студентам</a>
+      <a class="tab tab--glass" href="#">выпускникам</a>
+      <a class="tab tab--glass" href="#">профессионалитет</a>
+      <a class="tab tab--glass" href="#">Обучение с нуля</a>
+    </div>
+    <div class="hero__info">
+      <p class="caps-xs">развиваемся вместе</p>
+      <p class="hero__lead">Амбассадорство, практика, магистратура и&nbsp;образовательные курсы&nbsp;— выбери свой путь</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. ПОЧЕМУ АРЕАЛ (Component 45 / Анимация 8171:63897, 768: Шаг 121–125, 375: Шаг 108) ============ -->
+<section class="screen why" id="why" data-screen="why">
+  <div class="why__stage" id="whyStage" aria-hidden="true"></div>
+  <div class="why__text">
+    <p class="caps why__over">Преимущества</p>
+    <h2 class="why__title">Почему Ареал</h2>
+    <p class="why__lead">Реальный вклад в&nbsp;твою будущую карьеру&nbsp;— независимо от&nbsp;того, что ты выберешь</p>
+  </div>
+</section>
+
+<!-- ============ 3. ВЫБОР ТРЕКА (Animation 8171:62357 / секция 8171:62402; 768: 8171:63369; 375: 8171:63921) ============ -->
+<section class="screen trk" id="tracks" data-screen="tracks">
+  <div class="trk__picker" id="trkPicker">
+    <p class="caps trk__pick-title">Выбери свое</p>
+    <div class="trk__list" id="trkList" role="tablist" aria-label="Треки"></div>
+  </div>
+  <div class="trk__banner" id="trkBanner">
+    <div class="trk__media">
+      <div class="trk__strip" id="trkStrip"></div>
+      <div class="trk__blur" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="trk__dark"></div>
+    </div>
+    <div class="trk__hover" id="trkHover" aria-hidden="true"></div>
+    <div class="trk__texts"><div class="trk__texts-in" id="trkTexts"></div></div>
+    <div class="trk__adv" id="trkAdv"></div>
+    <div class="dots trk__dots" id="trkDots" aria-hidden="true"></div>
+  </div>
+</section>
+
+<!-- ============ ДАЛЬШЕ — обычный скролл ============ -->
+<div id="rest" class="rest">
+
+  <!-- Мероприятия 8171:62358 -->
+  <section class="events wrap">
+    <h2 class="sec-title">Мероприятия</h2>
+    <div class="events__bar">
+      <div class="events__filters">
+        <button class="chip" type="button">Выбрать дату <img src="assets/icon-calendar.svg" alt="" width="20" height="20"></button>
+        <button class="chip" type="button">Экскурсии в офис</button>
+        <button class="chip" type="button">Дни открытых дверей</button>
+        <button class="chip" type="button">Карьерные консультации</button>
+        <button class="chip" type="button">Встречи с экспертом</button>
+      </div>
+      <a class="chip chip--gold events__all-d" href="#">все мероприятия</a>
+    </div>
+    <div class="events__row" id="eventsRow">
+      <article class="ev">
+        <div class="ev__bg"><img src="assets/event-hover-a.png" alt=""><img src="assets/event-hover-b.png" alt=""></div>
+        <div class="ev__top"><div class="ev__tags"><span class="tag">21 марта</span><span class="tag">Москва</span></div>
+          <h3 class="ev__title">Внеурочные занятия в&nbsp;школе для подростков 14–16&nbsp;лет</h3></div>
+        <div class="ev__bottom"><span class="caps">Запись завершена</span></div>
+      </article>
+      <article class="ev">
+        <div class="ev__bg"><img src="assets/event-hover-a.png" alt=""><img src="assets/event-hover-b.png" alt=""></div>
+        <div class="ev__top"><div class="ev__tags"><span class="tag">22 марта</span><span class="tag">Москва</span></div>
+          <h3 class="ev__title">Экскурсия в&nbsp;офис в&nbsp;управляющую компанию в&nbsp;Москве</h3></div>
+        <div class="ev__bottom"><span class="caps">Регистрация открыта</span><a class="chip chip--gold ev__more" href="#">подробнее</a></div>
+      </article>
+      <article class="ev">
+        <div class="ev__bg"><img src="assets/event-hover-a.png" alt=""><img src="assets/event-hover-b.png" alt=""></div>
+        <div class="ev__top"><div class="ev__tags"><span class="tag">04 апреля</span><span class="tag">Санкт-петербург</span></div>
+          <h3 class="ev__title">День открытых дверей <br>по&nbsp;проекту «Профессионалитет» <br>для выпускников колледжа</h3></div>
+        <div class="ev__bottom"><span class="caps">Регистрация открыта</span><a class="chip chip--gold ev__more" href="#">подробнее</a></div>
+      </article>
+      <article class="ev">
+        <div class="ev__bg"><img src="assets/event-hover-a.png" alt=""><img src="assets/event-hover-b.png" alt=""></div>
+        <div class="ev__top"><div class="ev__tags"><span class="tag">22 марта</span><span class="tag">Москва</span></div>
+          <h3 class="ev__title">День открытых дверей <br>по&nbsp;проекту «Профессионалитет» <br>для выпускников колледжа</h3></div>
+        <div class="ev__bottom"><span class="caps">Регистрация открыта</span><a class="chip chip--gold ev__more" href="#">подробнее</a></div>
+      </article>
+    </div>
+    <div class="events__nav">
+      <button class="slider-btn" type="button" data-dir="-1" aria-label="Назад"><img src="assets/chevron-left.svg" alt="" width="16" height="16"></button>
+      <button class="slider-btn" type="button" data-dir="1" aria-label="Вперед"><img src="assets/chevron-right.svg" alt="" width="16" height="16"></button>
+    </div>
+    <div class="dots events__dots" id="eventsDots" aria-hidden="true"></div>
+    <a class="chip chip--gold events__all-m" href="#">Смотреть все мероприятия</a>
+  </section>
+
+  <!-- Остаемся на связи 8171:62377 -->
+  <section class="social wrap">
+    <div class="social__cards">
+      <div class="social__card social__card--l"><img src="assets/social-left.jpg" alt=""></div>
+      <div class="social__card social__card--r"><img src="assets/social-right.jpg" alt=""></div>
+      <article class="social__main">
+        <div class="social__img"><img src="assets/social-main.jpg" alt="Амбассадоры Ареала в офисе"></div>
+        <div class="social__txt">
+          <p class="caps social__meta">14 мая <img src="assets/dot-1.svg" alt="" width="20" height="20"> телеграм-канал @arealjobs</p>
+          <p class="social__news">В мае 11 лучших амбассадоров посетили офис управляющей компании и&nbsp;приняли участие в&nbsp;командных играх</p>
+        </div>
+      </article>
+      <div class="pager"><img src="assets/dot-2.svg" alt="" width="12" height="20"><img src="assets/dot-3.svg" alt="" width="12" height="20"><img src="assets/dot-3.svg" alt="" width="12" height="20"></div>
+    </div>
+    <div class="social__info">
+      <div class="social__head">
+        <p class="caps op50">Остаемся на связи</p>
+        <p class="social__lead">Подписывайся на&nbsp;наши соцсети для молодых специалистов: истории успеха, рекомендации от&nbsp;профессионалов и&nbsp;свежие новости о&nbsp;стажировках</p>
+      </div>
+      <div class="social__contacts">
+        <div class="social__grp">
+          <p class="caps op50">мы в социальных сетях:</p>
+          <div class="social__icons">
+            <a class="icon-btn" href="#" aria-label="ВКонтакте"><img src="assets/icon-vk.svg" alt="" width="20" height="20"></a>
+            <a class="icon-btn" href="#" aria-label="Телеграм"><img src="assets/icon-tg.svg" alt="" width="20" height="20"></a>
+            <a class="icon-btn" href="#" aria-label="Одноклассники"><img src="assets/icon-ok.svg" alt="" width="20" height="20"></a>
+          </div>
+        </div>
+        <div class="social__grp">
+          <p class="caps op50">Напиши нам на почту:</p>
+          <a class="chip social__mail" href="mailto:team@areal.ru">team@areal.ru</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer 8171:62400 — фон background/page #FBFBFB (аннотация) -->
+  <footer class="ftr">
+    <div class="ftr__in wrap">
+      <div class="ftr__contacts">
+        <div><a href="mailto:info@areal.ru">info@areal.ru</a><a href="tel:+74954249521"><span class="v-d">+7 495 424-95-21</span><span class="v-m">+7 (495) 424 95 21</span></a></div>
+        <div class="ftr__soc"><a href="#">Телеграм</a><a href="#">Rutube</a><a href="#">Одноклассники</a></div>
+      </div>
+      <nav class="ftr__nav"><a href="#">Карьера</a><a href="#">Старт в ареале</a><a href="#">Старт в ареале</a><a href="#">Контакты</a>
+        <a class="ftr__corp ftr__corp--m" href="#">корпоративный сайт <img src="assets/arrow-link.svg" alt="" width="16" height="16"></a></nav>
+      <a class="ftr__corp ftr__corp--d" href="#">корпоративный сайт <img src="assets/arrow-link.svg" alt="" width="16" height="16"></a>
+      <p class="ftr__made">Сделано в <img src="assets/logo-aic.svg" alt="aic." width="23" height="11"></p>
+      <a class="ftr__logo" href="#"><img src="assets/logo-footer.svg" alt="Ареал" width="99" height="36"></a>
+      <div class="ftr__pol"><a href="#">Пользовательское соглашение</a><a href="#">Политика конфиденциальности</a></div>
+    </div>
+  </footer>
+</div>
+
+<script src="main.js"></script>
+</body>
+</html>
