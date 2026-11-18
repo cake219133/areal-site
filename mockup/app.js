@@ -771,7 +771,7 @@ function currentOpts() {
     opacity: Number($("opacity").value) / 100,
     brightness: Number($("brightness").value) / 100,
     glareOn: $("glareOn").checked,
-    showQuad: $("showQuad").checked,
+    showQuad: advancedOpen() && $("showQuad") && $("showQuad").checked,
     fitMode: ($("fitCover") && $("fitCover").checked) ? "cover" : "contain",
   };
 }
@@ -1062,12 +1062,13 @@ function draw() {
     ctx.fillStyle = "#8b91a5";
     ctx.font = "16px system-ui, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("Загрузите мокап или откройте «Пример с чёлкой»", canvas.width / 2, canvas.height / 2);
+    ctx.fillText("Загрузите фото мокапа и фото экрана", canvas.width / 2, canvas.height / 2);
     return;
   }
   const view = computeView(canvas, state.mockup);
   compositeToCanvas(ctx, canvas.width, canvas.height, view, false);
-  $("sizeHint").textContent = state.mockup.width + " × " + state.mockup.height;
+  if ($("sizeHint")) $("sizeHint").textContent = state.mockup.width + " × " + state.mockup.height;
+  syncAdvancedUI(false);
 }
 
 /* ---------- demo fixture: MacBook-like photo with a notch already in the screen ---------- */
@@ -1283,6 +1284,8 @@ function onMockup(img) {
 function onScreen(img) {
   state.screen = img;
   setThumb($("thumbScreen"), img);
+  updateExportHint();
+  if (state.mockup && state.quad) setStatus("Готово. Можно скачать результат.", "ok");
   requestDraw();
 }
 
@@ -1292,15 +1295,15 @@ function autoDetect() {
   if (!res) {
     state.quad = defaultQuad(state.mockup);
     state.holeMode = false;
-    setStatus("Экран не найден автоматически. Укажите 4 угла вручную.", "err");
+    setStatus("Экран не найден автоматически. Откройте «Тонкая настройка», чтобы указать углы вручную.", "err");
   } else {
     state.quad = res.quad;
     state.holeMode = !!res.holeMode;
     state.bezelColor = sampleBezelColor(state.mockup, state.quad);
     if ($("notchColorAuto").checked) $("notchColor").value = rgbToHex(state.bezelColor);
-    const methods = { bezel: "внутри рамки", edges: "по контуру", bright: "по яркой области", fg: "по контрасту с фоном", chroma: "по зелёному экрану", white: "по белому экрану", blackscreen: "по тёмному экрану", alpha: "по прозрачному отверстию", darkbody: "по тёмной области" };
     const holeNote = state.holeMode ? " Макет будет положен под мокап (экран — прозрачное отверстие)." : "";
-    setStatus("Экран найден (" + (methods[res.method] || res.method) + "). Чёлка в фото, если есть, включена в полный четырёхугольник." + holeNote, "ok");
+    if (state.screen) setStatus("Готово. Можно скачать результат." + holeNote, "ok");
+    else setStatus("Экран на мокапе найден. Теперь загрузите фото экрана." + holeNote, "ok");
   }
   requestDraw();
 }
@@ -1332,7 +1335,7 @@ function updateLabels() {
 }
 
 function hookControls() {
-  const ids = ["notchOn","notchW","notchH","notchR","notchColor","notchColorAuto","cornerR","padAll","padSidesOn","padL","padR","padT","padB","opacity","brightness","glareOn","showQuad","fitCover","fitContain","exportSize","fmtPng","fmtJpg"];
+  const ids = ["notchOn","notchW","notchH","notchR","notchColor","notchColorAuto","cornerR","padAll","padSidesOn","padL","padR","padT","padB","opacity","brightness","glareOn","showQuad","fitCover","fitContain","size2k","sizeFhd","fmtPng","fmtJpg"];
   ids.forEach((id) => {
     if (!$(id)) return;
     $(id).addEventListener("input", () => { updateLabels(); requestDraw(); });
@@ -1387,6 +1390,7 @@ function bindCanvas() {
       requestDraw();
       return;
     }
+    if (!advancedOpen()) return;
     const i = nearestCorner(pt);
     if (i == null) return;
     state.dragging = i;
@@ -1411,30 +1415,49 @@ function bindCanvas() {
   canvas.addEventListener("pointercancel", end);
 }
 
+function advancedOpen() {
+  const el = $("advanced");
+  return !!(el && el.open);
+}
+
+function syncAdvancedUI(redraw) {
+  const open = advancedOpen();
+  const legend = $("legend");
+  if (legend) legend.hidden = !open || !state.mockup;
+  const canvas = $("canvas");
+  if (canvas) canvas.style.cursor = open && state.mockup ? "crosshair" : "default";
+  if (redraw !== false) requestDraw();
+}
+
 function sourceLongSide() {
-  if (!state.mockup) return 2048;
+  if (!state.mockup) return 2560;
   return Math.max(state.mockup.width, state.mockup.height);
 }
 
 function exportLongSide() {
-  const src = sourceLongSide();
-  const sel = $("exportSize") ? $("exportSize").value : "auto";
-  const n = sel === "auto" ? src : Number(sel);
-  return Math.min(2048, Math.max(1, Math.round(n || src)));
+  if ($("sizeFhd") && $("sizeFhd").checked) return 1920;
+  return 2560;
+}
+
+function exportPixelSize(longSide) {
+  if (!state.mockup) return null;
+  const n = Math.round(longSide || exportLongSide());
+  const w = state.mockup.width, h = state.mockup.height;
+  if (w >= h) return { w: n, h: Math.max(1, Math.round(h * n / w)) };
+  return { w: Math.max(1, Math.round(w * n / h)), h: n };
 }
 
 function updateExportHint() {
-  if (!$("exportHint") || !state.mockup) return;
-  const auto = Math.min(2048, sourceLongSide());
-  const opt = $("exportSize") && $("exportSize").querySelector('option[value="auto"]');
-  if (opt) opt.textContent = "Авто (" + auto + " px, до 2K)";
-  $("exportHint").textContent = "По умолчанию — " + auto + " px (минимум из длинной стороны исходника и 2048). Жёсткий максимум — 2048 px. Рендер идёт с исходного разрешения, не с превью.";
-  if ($("btnDownload")) $("btnDownload").textContent = exportFormat() === "jpg" ? "Скачать JPG" : "Скачать PNG";
+  const d2 = exportPixelSize(2560);
+  const df = exportPixelSize(1920);
+  if ($("dim2k")) $("dim2k").textContent = d2 ? (d2.w + "×" + d2.h) : "длинная сторона 2560";
+  if ($("dimFhd")) $("dimFhd").textContent = df ? (df.w + "×" + df.h) : "длинная сторона 1920";
+  if ($("btnDownload")) $("btnDownload").disabled = !(state.mockup && state.screen);
 }
 
 function renderExportCanvas(longSide, format) {
   if (!state.mockup) return null;
-  const targetLong = Math.min(2048, Math.round(longSide || exportLongSide()));
+  const targetLong = Math.max(1, Math.round(longSide || exportLongSide()));
   const fmt = format || exportFormat();
   const full = document.createElement("canvas");
   full.width = state.mockup.width;
@@ -1517,20 +1540,22 @@ function init() {
   bindPaste();
   updateLabels();
   updateExportHint();
-  $("btnDetect").addEventListener("click", () => {
+  syncAdvancedUI(false);
+  if ($("advanced")) $("advanced").addEventListener("toggle", () => syncAdvancedUI(true));
+  if ($("btnDetect")) $("btnDetect").addEventListener("click", () => {
     if (!state.mockup) { setStatus("Сначала загрузите мокап.", "err"); return; }
     autoDetect();
   });
-  $("btnManual").addEventListener("click", () => {
+  if ($("btnManual")) $("btnManual").addEventListener("click", () => {
     if (!state.mockup) { setStatus("Сначала загрузите мокап.", "err"); return; }
     state.clickCorners = [];
     setStatus("Кликните 4 угла экрана: левый верхний, правый верхний, правый нижний, левый нижний.", "");
   });
-  $("btnResetQuad").addEventListener("click", () => {
+  if ($("btnResetQuad")) $("btnResetQuad").addEventListener("click", () => {
     if (!state.mockup) return;
     autoDetect();
   });
-  $("btnDemo").addEventListener("click", async () => {
+  if ($("btnDemo")) $("btnDemo").addEventListener("click", async () => {
     setStatus("Собираю пример ноутбука с чёлкой…");
     const demo = await makeDemoPair();
     state.mockup = demo.mockup;
@@ -1552,6 +1577,7 @@ function init() {
         setStatus("Пример загружен. Автопоиск был неточен, подставлен полный контур экрана (включая чёлку).", "");
       }
     }
+    updateExportHint();
     requestDraw();
   });
   $("btnDownload").addEventListener("click", downloadExport);
@@ -1585,5 +1611,6 @@ window.addEventListener("DOMContentLoaded", init);
 window.MockupFitter = {
   state, detectScreen, sampleBezelColor, makeDemoPair, currentOpts,
   compositeToCanvas, solveH, invertH, applyH, screenCoverage, orderQuad, quadIoU, convexHull,
-  renderExportCanvas, exportLongSide, exportFormat, mapFit, quadAspect, loadFile, onMockup, onScreen,
+  renderExportCanvas, exportLongSide, exportFormat, exportPixelSize, mapFit, quadAspect, loadFile, onMockup, onScreen,
+  advancedOpen, syncAdvancedUI,
 };

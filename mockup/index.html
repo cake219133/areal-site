@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Мокап-экран — точная подгонка</title>
+  <title>Мокап-экран</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -11,167 +11,163 @@
     <aside class="sidebar">
       <div class="brand">
         <h1>Мокап-экран</h1>
-        <span>точная подгонка</span>
+      </div>
+      <p class="lead">Загрузите два фото — изображение экрана встанет на место само.</p>
+
+      <div class="drops">
+        <div class="drop" id="dropMockup" tabindex="0">
+          <div>
+            <strong>Фото мокапа</strong>
+            <small>перетащите, нажмите или Ctrl+V</small>
+          </div>
+          <div class="thumb" id="thumbMockup"></div>
+        </div>
+        <div class="drop" id="dropScreen" tabindex="0">
+          <div>
+            <strong>Фото экрана</strong>
+            <small>перетащите, нажмите или Ctrl+V</small>
+          </div>
+          <div class="thumb" id="thumbScreen"></div>
+        </div>
+      </div>
+      <input type="file" id="fileMockup" accept="image/*" hidden />
+      <input type="file" id="fileScreen" accept="image/*" hidden />
+      <div class="status" id="status">Загрузите фото мокапа и фото экрана.</div>
+
+      <div class="download-block">
+        <div class="lab">Размер выгрузки</div>
+        <div class="seg" id="exportSizeSeg">
+          <label class="seg-item">
+            <input type="radio" name="exportSize" id="size2k" value="2560" checked />
+            <span>2K <small id="dim2k">длинная сторона 2560</small></span>
+          </label>
+          <label class="seg-item">
+            <input type="radio" name="exportSize" id="sizeFhd" value="1920" />
+            <span>Full HD <small id="dimFhd">длинная сторона 1920</small></span>
+          </label>
+        </div>
+        <div class="fmt-row">
+          <label class="seg-item compact"><input type="radio" name="exportFormat" id="fmtPng" value="png" checked /><span>PNG</span></label>
+          <label class="seg-item compact"><input type="radio" name="exportFormat" id="fmtJpg" value="jpg" /><span>JPG</span></label>
+        </div>
+        <button type="button" class="primary" id="btnDownload" disabled>Скачать</button>
       </div>
 
-      <div class="section" style="border-top:0;padding-top:0">
-        <h2>Файлы</h2>
-        <div class="drops">
-          <div class="drop" id="dropMockup" tabindex="0">
-            <div>
-              <strong>Фото мокапа ноутбука</strong>
-              <small>перетащите, нажмите или Ctrl+V</small>
+      <details id="advanced">
+        <summary>Тонкая настройка</summary>
+
+        <div class="section" style="border-top:0;padding-top:8px">
+          <div class="row">
+            <button type="button" id="btnDetect">Найти экран</button>
+            <button type="button" id="btnDemo">Пример с чёлкой</button>
+          </div>
+          <div class="row">
+            <button type="button" id="btnManual">Указать 4 угла</button>
+            <button type="button" id="btnResetQuad">Сбросить углы</button>
+          </div>
+          <p class="hint" id="manualHint">Автопоиск берёт полный четырёхугольник экрана, включая область чёлки (выпуклая оболочка).</p>
+          <label class="check">
+            <span>Показать контур экрана</span>
+            <input type="checkbox" id="showQuad" checked />
+          </label>
+        </div>
+
+        <div class="section" id="sectionNotch">
+          <h2>Чёлка</h2>
+          <label class="toggle">
+            <span>Показать чёлку</span>
+            <input type="checkbox" id="notchOn" />
+          </label>
+          <div class="control">
+            <div class="lab">Ширина <span id="notchWVal">18%</span></div>
+            <input type="range" id="notchW" min="4" max="50" value="18" step="0.5" />
+          </div>
+          <div class="control">
+            <div class="lab">Высота <span id="notchHVal">4.5%</span></div>
+            <input type="range" id="notchH" min="0.5" max="20" value="4.5" step="0.1" />
+          </div>
+          <div class="control">
+            <div class="lab">Скругление <span id="notchRVal">40%</span></div>
+            <input type="range" id="notchR" min="0" max="50" value="40" step="1" />
+          </div>
+          <div class="color-row">
+            <label for="notchColor">Цвет чёлки</label>
+            <input type="color" id="notchColor" value="#000000" />
+          </div>
+          <label class="check">
+            <span>Цвет с рамки (авто)</span>
+            <input type="checkbox" id="notchColorAuto" />
+          </label>
+          <p class="hint">Чёлка рисуется в перспективе экрана, по центру верхней стороны — как у MacBook.</p>
+        </div>
+
+        <div class="section">
+          <h2>Форма экрана</h2>
+          <div class="control">
+            <div class="lab">Скругление углов <span id="cornerRVal">4%</span></div>
+            <input type="range" id="cornerR" min="0" max="25" value="4" step="0.1" />
+          </div>
+          <div class="lab" style="margin-top:10px">Посадка макета</div>
+          <div class="seg" id="fitModeSeg">
+            <label class="seg-item"><input type="radio" name="fitMode" id="fitCover" value="cover" checked /><span>Заполнить</span></label>
+            <label class="seg-item"><input type="radio" name="fitMode" id="fitContain" value="contain" /><span>Вписать</span></label>
+          </div>
+          <p class="hint">«Заполнить» покрывает экран и у высоких скриншотов обрезает низ, оставляя верх. «Вписать» показывает макет целиком.</p>
+        </div>
+
+        <div class="section">
+          <h2>Отступы</h2>
+          <div class="control">
+            <div class="lab">Общий отступ <span id="padAllVal">0%</span></div>
+            <input type="range" id="padAll" min="0" max="20" value="0" step="0.1" />
+          </div>
+          <label class="check">
+            <span>Отступы по сторонам</span>
+            <input type="checkbox" id="padSidesOn" />
+          </label>
+          <div class="sides" id="padSides">
+            <div class="control">
+              <div class="lab">Слева <span id="padLVal">0%</span></div>
+              <input type="range" id="padL" min="0" max="25" value="0" step="0.1" />
             </div>
-            <div class="thumb" id="thumbMockup"></div>
-          </div>
-          <div class="drop" id="dropScreen" tabindex="0">
-            <div>
-              <strong>Макет сайта</strong>
-              <small>перетащите, нажмите или Ctrl+V</small>
+            <div class="control">
+              <div class="lab">Справа <span id="padRVal">0%</span></div>
+              <input type="range" id="padR" min="0" max="25" value="0" step="0.1" />
             </div>
-            <div class="thumb" id="thumbScreen"></div>
+            <div class="control">
+              <div class="lab">Сверху <span id="padTVal">0%</span></div>
+              <input type="range" id="padT" min="0" max="25" value="0" step="0.1" />
+            </div>
+            <div class="control">
+              <div class="lab">Снизу <span id="padBVal">0%</span></div>
+              <input type="range" id="padB" min="0" max="25" value="0" step="0.1" />
+            </div>
           </div>
         </div>
-        <input type="file" id="fileMockup" accept="image/*" hidden />
-        <input type="file" id="fileScreen" accept="image/*" hidden />
-        <div class="row">
-          <button type="button" id="btnDemo">Пример с чёлкой</button>
-          <button type="button" id="btnDetect">Найти экран</button>
-        </div>
-        <div class="row">
-          <button type="button" id="btnManual">Указать 4 угла</button>
-          <button type="button" id="btnResetQuad">Сбросить углы</button>
-        </div>
-        <p class="hint" id="manualHint">Автопоиск берёт полный четырёхугольник экрана, включая область чёлки (выпуклая оболочка).</p>
-        <div class="status" id="status">Загрузите фото мокапа и макет сайта — перетаскиванием, кликом или вставкой (Ctrl+V).</div>
-      </div>
 
-      <div class="section" id="sectionNotch">
-        <h2>Чёлка</h2>
-        <label class="toggle">
-          <span>Показать чёлку</span>
-          <input type="checkbox" id="notchOn" />
-        </label>
-        <div class="control">
-          <div class="lab">Ширина <span id="notchWVal">18%</span></div>
-          <input type="range" id="notchW" min="4" max="50" value="18" step="0.5" />
-        </div>
-        <div class="control">
-          <div class="lab">Высота <span id="notchHVal">4.5%</span></div>
-          <input type="range" id="notchH" min="0.5" max="20" value="4.5" step="0.1" />
-        </div>
-        <div class="control">
-          <div class="lab">Скругление <span id="notchRVal">40%</span></div>
-          <input type="range" id="notchR" min="0" max="50" value="40" step="1" />
-        </div>
-        <div class="color-row">
-          <label for="notchColor">Цвет чёлки</label>
-          <input type="color" id="notchColor" value="#000000" />
-        </div>
-        <label class="check">
-          <span>Цвет с рамки (авто)</span>
-          <input type="checkbox" id="notchColorAuto" />
-        </label>
-        <p class="hint">Чёлка рисуется в перспективе экрана, по центру верхней стороны — как у MacBook.</p>
-      </div>
-
-      <div class="section">
-        <h2>Форма экрана</h2>
-        <div class="control">
-          <div class="lab">Скругление углов <span id="cornerRVal">4%</span></div>
-          <input type="range" id="cornerR" min="0" max="25" value="4" step="0.1" />
-        </div>
-        <p class="hint">Радиус задаётся в плоскости экрана и проецируется вместе с картинкой.</p>
-        <div class="lab" style="margin-top:10px">Посадка макета</div>
-        <div class="seg" id="fitModeSeg">
-          <label class="seg-item"><input type="radio" name="fitMode" id="fitCover" value="cover" checked /><span>Заполнить</span></label>
-          <label class="seg-item"><input type="radio" name="fitMode" id="fitContain" value="contain" /><span>Вписать</span></label>
-        </div>
-        <p class="hint">«Заполнить» покрывает экран и у высоких длинных скриншотов обрезает низ, оставляя верх. «Вписать» показывает макет целиком.</p>
-      </div>
-
-      <div class="section">
-        <h2>Отступы</h2>
-        <div class="control">
-          <div class="lab">Общий отступ <span id="padAllVal">0%</span></div>
-          <input type="range" id="padAll" min="0" max="20" value="0" step="0.1" />
-        </div>
-        <label class="check">
-          <span>Отступы по сторонам</span>
-          <input type="checkbox" id="padSidesOn" />
-        </label>
-        <div class="sides" id="padSides">
+        <div class="section">
+          <h2>Вид</h2>
           <div class="control">
-            <div class="lab">Слева <span id="padLVal">0%</span></div>
-            <input type="range" id="padL" min="0" max="25" value="0" step="0.1" />
+            <div class="lab">Непрозрачность <span id="opacityVal">100%</span></div>
+            <input type="range" id="opacity" min="20" max="100" value="100" step="1" />
           </div>
           <div class="control">
-            <div class="lab">Справа <span id="padRVal">0%</span></div>
-            <input type="range" id="padR" min="0" max="25" value="0" step="0.1" />
+            <div class="lab">Яркость <span id="brightnessVal">0</span></div>
+            <input type="range" id="brightness" min="-40" max="40" value="0" step="1" />
           </div>
-          <div class="control">
-            <div class="lab">Сверху <span id="padTVal">0%</span></div>
-            <input type="range" id="padT" min="0" max="25" value="0" step="0.1" />
-          </div>
-          <div class="control">
-            <div class="lab">Снизу <span id="padBVal">0%</span></div>
-            <input type="range" id="padB" min="0" max="25" value="0" step="0.1" />
-          </div>
+          <label class="toggle">
+            <span>Блик</span>
+            <input type="checkbox" id="glareOn" checked />
+          </label>
         </div>
-      </div>
-
-      <div class="section">
-        <h2>Вид</h2>
-        <div class="control">
-          <div class="lab">Непрозрачность <span id="opacityVal">100%</span></div>
-          <input type="range" id="opacity" min="20" max="100" value="100" step="1" />
-        </div>
-        <div class="control">
-          <div class="lab">Яркость <span id="brightnessVal">0</span></div>
-          <input type="range" id="brightness" min="-40" max="40" value="0" step="1" />
-        </div>
-        <label class="toggle">
-          <span>Блик</span>
-          <input type="checkbox" id="glareOn" checked />
-        </label>
-        <p class="hint">Блик возвращает блики с исходного мокапа и добавляет мягкий блик по стеклу.</p>
-      </div>
-
-      <div class="section">
-        <h2>Выгрузка</h2>
-        <div class="lab">Формат</div>
-        <div class="seg">
-          <label class="seg-item"><input type="radio" name="exportFormat" id="fmtPng" value="png" checked /><span>PNG</span></label>
-          <label class="seg-item"><input type="radio" name="exportFormat" id="fmtJpg" value="jpg" /><span>JPG</span></label>
-        </div>
-        <div class="control">
-          <div class="lab"><label for="exportSize">Длинная сторона</label></div>
-          <select id="exportSize">
-            <option value="auto" selected>Авто (до 2K)</option>
-            <option value="1024">1024 px</option>
-            <option value="1600">1600 px</option>
-            <option value="2048">2048 px (2K)</option>
-          </select>
-        </div>
-        <p class="hint" id="exportHint">По умолчанию — минимум из длинной стороны исходника и 2048 px. Максимум — 2048 px.</p>
-        <div class="row" style="margin-top:12px">
-          <button type="button" class="primary" id="btnDownload">Скачать PNG</button>
-        </div>
-      </div>
+      </details>
     </aside>
 
     <main class="stage">
-      <div class="toolbar">
-        <label class="check" style="margin:0">
-          <span>Показать контур экрана</span>
-          <input type="checkbox" id="showQuad" checked />
-        </label>
-        <div class="spacer"></div>
-        <span class="hint" style="margin:0" id="sizeHint"></span>
-      </div>
       <div class="view">
         <canvas id="canvas"></canvas>
-        <div class="legend" id="legend">Перетащите углы, чтобы подправить посадку</div>
+        <span class="size-hint" id="sizeHint"></span>
+        <div class="legend" id="legend" hidden>Перетащите углы, чтобы подправить посадку</div>
       </div>
     </main>
   </div>
