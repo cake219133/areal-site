@@ -93,6 +93,9 @@ h1,h2,h3,p{margin:0;font-weight:400}
 .why__stage{position:absolute;inset:0}
 .why-el{position:absolute;left:0;top:0;border-radius:var(--radius);overflow:hidden;will-change:transform,opacity;
   transition:transform var(--slide-ms) var(--ease-out),opacity var(--slide-ms) var(--ease-out)}
+/* photos stay under cards so a picture never covers card text (every step / breakpoint) */
+.why-ph{z-index:1}
+.why-card{z-index:2}
 .why-el.no-anim{transition:none}
 .why-el img{position:absolute;max-width:none}
 .why-el .cov{inset:0;width:100%;height:100%;object-fit:cover}
@@ -427,8 +430,47 @@ h1,h2,h3,p{margin:0;font-weight:400}
 .trk__blur i:nth-child(6){-webkit-backdrop-filter:blur(calc(var(--blur-max)/4));backdrop-filter:blur(calc(var(--blur-max)/4));-webkit-mask:linear-gradient(#0000 62.5%,#000 75%,#000 87.5%,#0000 100%);mask:linear-gradient(#0000 62.5%,#000 75%,#000 87.5%,#0000 100%)}
 .trk__blur i:nth-child(7){-webkit-backdrop-filter:blur(calc(var(--blur-max)/2));backdrop-filter:blur(calc(var(--blur-max)/2));-webkit-mask:linear-gradient(#0000 75%,#000 87.5%,#000 100%);mask:linear-gradient(#0000 75%,#000 87.5%,#000 100%)}
 .trk__blur i:nth-child(8){-webkit-backdrop-filter:blur(var(--blur-max));backdrop-filter:blur(var(--blur-max));-webkit-mask:linear-gradient(#0000 87.5%,#000 100%);mask:linear-gradient(#0000 87.5%,#000 100%)}
-@media (max-width:1023px){.trk__blur{--blur-h:230px;--blur-max:64px}}
-@media (max-width:599px){.trk__blur{--blur-h:186px;--blur-max:64px}}
+/* tablet / mobile only: blur 0 at the top of the zone → 64px at the bottom.
+   Radii are spaced so the heavy blur eases in, instead of a late cliff of 32–64px.
+   The full-card .trk__dark bottom stop is pulled up off this zone; the scrim below
+   fades in from transparent so the top of the zone stays crisp. Desktop rules above
+   are unchanged. */
+@media (max-width:1023px){
+  .trk__blur{--blur-h:230px;--blur-max:64px}
+  .trk__blur i{-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-size:100% 100%;mask-size:100% 100%}
+  .trk__blur i:nth-child(1){-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);
+    -webkit-mask-image:linear-gradient(to bottom,transparent 0%,#000 12%,#000 20%,transparent 36%);
+    mask-image:linear-gradient(to bottom,transparent 0%,#000 12%,#000 20%,transparent 36%)}
+  .trk__blur i:nth-child(2){-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);
+    -webkit-mask-image:linear-gradient(to bottom,transparent 14%,#000 28%,#000 38%,transparent 52%);
+    mask-image:linear-gradient(to bottom,transparent 14%,#000 28%,#000 38%,transparent 52%)}
+  .trk__blur i:nth-child(3){-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    -webkit-mask-image:linear-gradient(to bottom,transparent 28%,#000 42%,#000 52%,transparent 66%);
+    mask-image:linear-gradient(to bottom,transparent 28%,#000 42%,#000 52%,transparent 66%)}
+  .trk__blur i:nth-child(4){-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+    -webkit-mask-image:linear-gradient(to bottom,transparent 42%,#000 56%,#000 66%,transparent 80%);
+    mask-image:linear-gradient(to bottom,transparent 42%,#000 56%,#000 66%,transparent 80%)}
+  .trk__blur i:nth-child(5){-webkit-backdrop-filter:blur(28px);backdrop-filter:blur(28px);
+    -webkit-mask-image:linear-gradient(to bottom,transparent 54%,#000 68%,#000 78%,transparent 92%);
+    mask-image:linear-gradient(to bottom,transparent 54%,#000 68%,#000 78%,transparent 92%)}
+  .trk__blur i:nth-child(6){-webkit-backdrop-filter:blur(40px);backdrop-filter:blur(40px);
+    -webkit-mask-image:linear-gradient(to bottom,transparent 64%,#000 78%,#000 88%,transparent 100%);
+    mask-image:linear-gradient(to bottom,transparent 64%,#000 78%,#000 88%,transparent 100%)}
+  .trk__blur i:nth-child(7){-webkit-backdrop-filter:blur(52px);backdrop-filter:blur(52px);
+    -webkit-mask-image:linear-gradient(to bottom,transparent 74%,#000 88%,#000 94%,transparent 100%);
+    mask-image:linear-gradient(to bottom,transparent 74%,#000 88%,#000 94%,transparent 100%)}
+  .trk__blur i:nth-child(8){-webkit-backdrop-filter:blur(64px);backdrop-filter:blur(64px);
+    -webkit-mask-image:linear-gradient(to bottom,transparent 78%,#000 100%);
+    mask-image:linear-gradient(to bottom,transparent 78%,#000 100%)}
+  .trk__blur::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(to bottom,rgba(0,0,0,0) 0%,rgba(0,0,0,.16) 46%,rgba(0,0,0,.42) 100%)}
+  .trk__dark{inset:0 0 auto 0;height:calc(100% - 230px);
+    background:linear-gradient(to bottom,rgba(0,0,0,.34) 0%,rgba(0,0,0,.12) 32%,rgba(0,0,0,0) 100%)}
+}
+@media (max-width:599px){
+  .trk__blur{--blur-h:186px;--blur-max:64px}
+  .trk__dark{height:calc(100% - 186px)}
+}
 
 /* tablet/mobile: "Выбери свое" label above the sticky tabs (as in the 768/375 frames) */
 @media (max-width:1023px){
