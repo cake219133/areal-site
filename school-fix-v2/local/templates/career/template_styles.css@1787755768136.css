@@ -1,0 +1,12 @@
+#panel:empty {
+    display: none;
+}
+
+[id^='wait_'] {
+    display: none;
+}
+
+.hidden,
+.grecaptcha-badge {
+    display: none !important;
+}

@@ -1,0 +1,978 @@
+diff --git a/local/templates/career/assets/js/main/common.js b/local/templates/career/assets/js/main/common.js
+--- a/local/templates/career/assets/js/main/common.js
++++ b/local/templates/career/assets/js/main/common.js
+@@ -2408,6 +2408,315 @@
+   checkSticky();
+ })();
+ 
++/**
++ * school-fix-v2: стек «Возможности» по мотивам Lassie FeaturesCarousel.
++ * Зависимости: gsap и ScrollTrigger (libs.min.js).
++ * Подключать один раз, вместо старого блока .offers в common.js.
++ * Панель: ?tune=1, localStorage offers-v2-tune-v1.
++ * Фото не крутятся. Первая карточка оседает из scale .95 / y 10%.
++ * Задние: scale 1-0.15*depth, y (12-front)*depth %. Скролл — scrub, секция pin.
++ */
++document.addEventListener('DOMContentLoaded', function () {
++  if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') return;
++  gsap.registerPlugin(ScrollTrigger);
++  var section = document.querySelector('.offers');
++  if (!section || section.dataset.v2 === '1') return;
++  section.dataset.v2 = '1';
++  section.classList.add('offers--v2');
++  var items = gsap.utils.toArray(section.querySelectorAll('.offers__item'));
++  if (items.length < 3) return;
++
++  var DEFAULTS = {
++    scrub: 0.25,
++    scrollVh: 3,
++    pinDesktop: 2.2,
++    pinTablet: 3,
++    pinMobile: 2.5,
++    activeDur: 2,
++    exitDesktop: 3,
++    exitTablet: 2,
++    exitMobile: 3,
++    exitTextDesktop: 0.5,
++    exitTextTablet: 2,
++    exitTextMobile: 3,
++    textDur: 1,
++    textDurSmall: 2,
++    textFrom: 50,
++    btnStep: 0.1,
++    stackScale: 0.15,
++    stackY: 12,
++    introScale: 0.95,
++    introY: 10,
++    innerFrom: 1.05
++  };
++  var TUNE_KEY = 'offers-v2-tune-v1';
++  var tuneMode = /[?&]tune=1(&|$)/.test(location.search);
++  var cfg = {};
++  var key;
++  for (key in DEFAULTS) cfg[key] = DEFAULTS[key];
++  if (tuneMode) {
++    try {
++      var saved = JSON.parse(localStorage.getItem(TUNE_KEY) || '{}');
++      for (key in saved) if (key in cfg && typeof saved[key] === 'number' && isFinite(saved[key])) cfg[key] = saved[key];
++    } catch (e) {}
++  }
++  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
++
++  function bp() {
++    var w = window.innerWidth;
++    return w >= 1280 ? 'desktop' : w >= 1024 ? 'tablet' : 'mobile';
++  }
++  function cardBox() {
++    var w = window.innerWidth;
++    var width = w >= 1280 ? 490 : w >= 1024 ? 420 : Math.min(490, Math.max(240, w - 32));
++    return { w: width, h: Math.round(width * 346 / 490), r: w >= 1024 ? 16 : 12 };
++  }
++  function applyBox() {
++    var b = cardBox();
++    section.style.setProperty('--offer-w', b.w + 'px');
++    section.style.setProperty('--offer-h', b.h + 'px');
++    section.style.setProperty('--offer-r', b.r + 'px');
++  }
++
++  var itemsEl = section.querySelector('.offers__items');
++  var stage = document.createElement('div');
++  stage.className = 'offers__stage';
++  itemsEl.parentNode.insertBefore(stage, itemsEl);
++  stage.appendChild(itemsEl);
++
++  var cards = items.map(function (item, i) {
++    var img = item.querySelector('img');
++    var media = document.createElement('div');
++    media.className = 'offers__media';
++    img.parentNode.insertBefore(media, img);
++    media.appendChild(img);
++    item.dataset.side = i === 1 ? 'right' : 'left';
++    item.dataset.index = String(i);
++    var texts = gsap.utils.toArray(item.querySelectorAll('.offers__text > *')).filter(function (n) {
++      return !(n.classList && n.classList.contains('btn'));
++    });
++    var btn = item.querySelector('.offers__text .btn');
++    return { item: item, media: media, img: img, texts: texts, btn: btn, parts: btn ? texts.concat([btn]) : texts };
++  });
++
++  var built = [];
++  function destroy() {
++    built.forEach(function (t) { if (t && t.kill) t.kill(); });
++    built = [];
++    cards.forEach(function (c) {
++      gsap.set([c.media, c.img, c.parts], { clearProps: 'transform,opacity,visibility' });
++    });
++  }
++
++  function pinDistance() {
++    var b = bp();
++    var mult = b === 'desktop' ? cfg.pinDesktop : b === 'tablet' ? cfg.pinTablet : cfg.pinMobile;
++    return mult * window.innerHeight;
++  }
++  function exitMove() {
++    var b = bp();
++    return b === 'desktop' ? cfg.exitDesktop : b === 'tablet' ? cfg.exitTablet : cfg.exitMobile;
++  }
++  function exitText() {
++    var b = bp();
++    return b === 'desktop' ? cfg.exitTextDesktop : b === 'tablet' ? cfg.exitTextTablet : cfg.exitTextMobile;
++  }
++  function textDur() {
++    return bp() === 'desktop' ? cfg.textDur : cfg.textDurSmall;
++  }
++  function textAt() {
++    return bp() === 'desktop' ? 0.1 : 0;
++  }
++
++  function behind(card, index, front) {
++    var depth = index - front;
++    var tl = gsap.timeline({ defaults: { ease: 'none' } });
++    tl.to(card.media, {
++      scale: 1 - cfg.stackScale * depth,
++      yPercent: (cfg.stackY - front) * depth,
++      opacity: 1,
++      duration: cfg.activeDur
++    }, 0);
++    // Исходник Lassie ставит opacity видео 0.5-depth/5 (0.3 и 0.1) — на статичных фото стопка пропадает.
++    // Оставляем ободок читаемым, как на референс-кадре: 0.84 и 0.68.
++    tl.to(card.img, { opacity: depth <= 0 ? 1 : Math.max(0.62, 1 - 0.16 * depth), duration: cfg.activeDur }, 0);
++    tl.set(card.parts, { autoAlpha: 0 }, 0);
++    tl.to(card.parts, { yPercent: (90 - front) * depth, duration: cfg.activeDur }, 0);
++    return tl;
++  }
++  function active(card) {
++    var tl = gsap.timeline({ defaults: { ease: 'none' } });
++    var dur = textDur();
++    var at = textAt();
++    tl.to(card.media, { scale: 1, yPercent: 0, y: 0, opacity: 1, duration: cfg.activeDur }, 0);
++    tl.fromTo(card.img, { scale: cfg.innerFrom }, { scale: 1, opacity: 1, duration: cfg.activeDur, ease: 'none' }, 0);
++    card.texts.forEach(function (node, idx) {
++      tl.fromTo(node, { autoAlpha: 0, yPercent: cfg.textFrom }, {
++        autoAlpha: 1, yPercent: 0, duration: dur, ease: 'none', immediateRender: false
++      }, at + idx * cfg.btnStep);
++    });
++    if (card.btn) {
++      var lastStart = at + Math.max(0, card.texts.length - 1) * cfg.btnStep;
++      tl.fromTo(card.btn, { autoAlpha: 0, yPercent: cfg.textFrom }, {
++        autoAlpha: 1, yPercent: 0, duration: dur, ease: 'none', immediateRender: false
++      }, lastStart + cfg.btnStep);
++    }
++    tl.eventCallback('onUpdate', function () {
++      var on = tl.progress() > 0.15 && tl.progress() < 0.92;
++      card.item.classList.toggle('is-front', on);
++    });
++    return tl;
++  }
++  function exit(card) {
++    var tl = gsap.timeline({ defaults: { ease: 'none' } });
++    tl.to(card.parts, {
++      autoAlpha: 0,
++      yPercent: bp() === 'desktop' ? -60 : -100,
++      duration: exitText()
++    }, 0);
++    tl.to(card.media, {
++      scale: 1,
++      yPercent: 0,
++      y: function () { return -window.innerHeight; },
++      duration: exitMove()
++    }, 0);
++    return tl;
++  }
++  function cardTimeline(i) {
++    var tl = gsap.timeline({ defaults: { ease: 'none' } });
++    var card = cards[i];
++    if (i === 0) {
++      tl.add(active(card), 0);
++      tl.add(exit(card));
++    } else if (i === 1) {
++      tl.add(behind(card, 1, 0), 0);
++      tl.add(active(card));
++      tl.add(exit(card));
++    } else {
++      tl.add(behind(card, 2, 0), 0);
++      tl.add(behind(card, 2, 1));
++      tl.add(active(card));
++    }
++    return tl;
++  }
++
++  function prime() {
++    applyBox();
++    gsap.set(cards[0].media, { scale: cfg.introScale, yPercent: cfg.introY, y: 0, opacity: 1 });
++    gsap.set(cards[0].img, { scale: cfg.innerFrom, opacity: 1 });
++    cards.slice(1).forEach(function (card, n) {
++      var depth = n + 1;
++      gsap.set(card.media, { scale: 1 - cfg.stackScale * depth, yPercent: cfg.stackY * depth, y: 0, opacity: 1 });
++      gsap.set(card.img, { scale: 1, opacity: Math.max(0.62, 1 - 0.16 * depth) });
++    });
++    cards.forEach(function (card, i) {
++      gsap.set(card.parts, { autoAlpha: 0, yPercent: i === 0 ? cfg.textFrom : 50 });
++      card.item.classList.toggle('is-front', i === 0);
++    });
++    cards[0].item.style.zIndex = '3';
++    cards[1].item.style.zIndex = '2';
++    cards[2].item.style.zIndex = '1';
++  }
++
++  function build() {
++    destroy();
++    prime();
++    if (reduce) {
++      cards.forEach(function (card) {
++        gsap.set(card.media, { scale: 1, yPercent: 0, y: 0, opacity: 1 });
++        gsap.set(card.img, { scale: 1, opacity: 1 });
++        gsap.set(card.parts, { autoAlpha: 1, yPercent: 0 });
++        card.item.classList.add('is-front');
++      });
++      return;
++    }
++    var pin = ScrollTrigger.create({
++      trigger: stage,
++      start: 'center center',
++      end: function () { return '+=' + pinDistance(); },
++      pin: true,
++      anticipatePin: 1,
++      invalidateOnRefresh: true
++    });
++    var master = gsap.timeline({
++      defaults: { ease: 'none' },
++      scrollTrigger: {
++        trigger: stage,
++        start: function () { return window.innerWidth < 1024 ? 'top center-=100' : 'top center+=100'; },
++        end: function () { return '+=' + (cfg.scrollVh * window.innerHeight); },
++        scrub: cfg.scrub,
++        invalidateOnRefresh: true
++      }
++    });
++    cards.forEach(function (_, i) { master.add(cardTimeline(i), 0); });
++    built.push(pin, master);
++  }
++
++  build();
++  window.addEventListener('resize', function () { applyBox(); });
++  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { ScrollTrigger.refresh(); });
++
++  window.__offersV2 = {
++    get cfg() { return cfg; },
++    rebuild: build,
++    timeline: function () { return built[1]; }
++  };
++
++  if (!tuneMode) return;
++  var fields = [
++    ['scrub', 'Сглаживание скролла, с', 0, 1, 0.05],
++    ['scrollVh', 'Длина скролла, экраны', 1, 6, 0.1],
++    ['pinDesktop', 'Pin на десктопе, экраны', 1, 5, 0.1],
++    ['activeDur', 'Фаза карточки', 0.4, 4, 0.1],
++    ['exitDesktop', 'Уход карточки', 0.4, 5, 0.1],
++    ['stackScale', 'Масштаб шага стопки', 0, 0.4, 0.01],
++    ['stackY', 'Сдвиг стопки, %', 0, 40, 1],
++    ['introScale', 'Старт 1-й карточки, scale', 0.7, 1, 0.01],
++    ['introY', 'Старт 1-й карточки, %', 0, 40, 1],
++    ['textDur', 'Текст: длительность', 0.2, 3, 0.1],
++    ['textFrom', 'Текст: старт, %', 0, 100, 1],
++    ['btnStep', 'Кнопка: шаг', 0, 0.6, 0.01]
++  ];
++  var panel = document.createElement('div');
++  panel.className = 'offers-tune-v2';
++  var html = '<b>Анимация стопки v2</b>';
++  fields.forEach(function (f) {
++    html += '<label>' + f[1] + ' <output data-o="' + f[0] + '"></output><input type="range" data-k="' + f[0] + '" min="' + f[2] + '" max="' + f[3] + '" step="' + f[4] + '"></label>';
++  });
++  html += '<div class="offers-tune__btns"><button type="button" data-a="copy">Скопировать настройки</button><button type="button" data-a="reset">Сброс</button></div>';
++  panel.innerHTML = html;
++  document.body.appendChild(panel);
++  function paint() {
++    fields.forEach(function (f) {
++      panel.querySelector('[data-k="' + f[0] + '"]').value = cfg[f[0]];
++      panel.querySelector('[data-o="' + f[0] + '"]').textContent = cfg[f[0]];
++    });
++  }
++  function save() {
++    try { localStorage.setItem(TUNE_KEY, JSON.stringify(cfg)); } catch (e) {}
++    paint();
++    build();
++    ScrollTrigger.refresh();
++  }
++  panel.addEventListener('input', function (e) {
++    var k = e.target.getAttribute('data-k');
++    if (!k) return;
++    cfg[k] = Number(e.target.value);
++    save();
++  });
++  panel.addEventListener('click', function (e) {
++    var a = e.target.getAttribute('data-a');
++    if (a === 'reset') { for (var k in DEFAULTS) cfg[k] = DEFAULTS[k]; save(); }
++    if (a === 'copy') {
++      var text = JSON.stringify(cfg, null, 2);
++      if (navigator.clipboard) navigator.clipboard.writeText(text);
++      e.target.textContent = 'Скопировано';
++      setTimeout(function () { e.target.textContent = 'Скопировать настройки'; }, 1200);
++    }
++  });
++  paint();
++});
++
+ $(document).on('click', '.document-dropdown__btn', function () {
+   var btn = $(this);
+   var dropdown = btn.closest('.document-dropdown');
+diff --git a/school/index.html b/school/index.html
+--- a/school/index.html
++++ b/school/index.html
+@@ -1,13 +1,14 @@
+ <!DOCTYPE html>
+ <html lang="ru">
+ <head>
+-<title>Ареал. Школьникам</title>
++<meta name="robots" content="noindex, nofollow">
++    <title>Ареал. Школьникам</title>
+     <meta charset="utf-8">
+     <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+     <link rel="shortcut icon" href="../local/templates/career/assets/img/favicon.svg" type="image/x-icon">
+-    <meta name="robots" content="index,follow">
++    <meta name="robots" content="noindex, nofollow">
+     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+-<meta name="robots" content="index, follow" />
++<meta name="robots" content="noindex, nofollow" />
+ <link rel="canonical" href="index.html" />
+ <script data-skip-moving="true">(function(w, d, n) {var cl = "bx-core";var ht = d.documentElement;var htc = ht ? ht.className : undefined;if (htc === undefined || htc.indexOf(cl) !== -1){return;}var ua = n.userAgent;if (/(iPad;)|(iPhone;)/i.test(ua)){cl += " bx-ios";}else if (/Windows/i.test(ua)){cl += ' bx-win';}else if (/Macintosh/i.test(ua)){cl += " bx-mac";}else if (/Linux/i.test(ua) && !/Android/i.test(ua)){cl += " bx-linux";}else if (/Android/i.test(ua)){cl += " bx-android";}cl += (/(ipad|iphone|android|mobile|touch)/i.test(ua) ? " bx-touch" : " bx-no-touch");cl += w.devicePixelRatio && w.devicePixelRatio >= 2? " bx-retina": " bx-no-retina";if (/AppleWebKit/.test(ua)){cl += " bx-chrome";}else if (/Opera/.test(ua)){cl += " bx-opera";}else if (/Firefox/.test(ua)){cl += " bx-firefox";}ht.className = htc ? htc + " " + cl : cl;})(window, document, navigator);</script>
+ 
+@@ -17,6 +18,7 @@
+ <link href="../local/templates/career/assets/css/global.css@1795173152203267.css" type="text/css"  data-template-style="true"  rel="stylesheet" />
+ <link href="../local/templates/career/assets/css/common.css@1795165951105058.css" type="text/css"  data-template-style="true"  rel="stylesheet" />
+ <link href="../local/templates/career/assets/css/index.css@17951659511184249.css" type="text/css"  data-template-style="true"  rel="stylesheet" />
++<link href="../local/templates/career/assets/css/offers-steps.css" type="text/css" rel="stylesheet">
+ <link href="../local/templates/career/template_styles.css@1787755768136.css" type="text/css"  data-template-style="true"  rel="stylesheet" />
+ 
+ 
+@@ -99,7 +101,7 @@
+         </div>
+     </section>
+ 
+-    <section class="offers">
++    <section class="offers offers--v2">
+     <div class="container">
+         <div class="section-label section-label--grey">Что&nbsp;мы&nbsp;предлагаем</div>
+         <div class="section-title"><h2>Возможности для&nbsp;будущих специалистов</h2></div>
+diff --git a/local/templates/career/assets/css/offers-steps.css b/local/templates/career/assets/css/offers-steps.css
+new file mode 100644
+--- a/local/templates/career/assets/css/offers-steps.css
++++ b/local/templates/career/assets/css/offers-steps.css
+@@ -0,0 +1,149 @@
++/* school-fix-v2: стек карточек как у Lassie FeaturesCarousel.
++   Размеры фото задаёт JS через --offer-w / --offer-h / --offer-r. */
++.offers.offers--v2 {
++  position: relative;
++  box-sizing: border-box;
++  padding: 72px 0 48px;
++  overflow: visible;
++  background: #f0f0eb;
++}
++.offers.offers--v2 > .container {
++  position: relative;
++  height: auto !important;
++  display: block;
++}
++.offers.offers--v2 .section-label,
++.offers.offers--v2 .section-title { position: relative; z-index: 2; text-align: center; }
++.offers.offers--v2 .offers__stage {
++  position: relative;
++  width: 100%;
++  min-height: calc(var(--offer-h, 346px) + 220px);
++  display: flex;
++  align-items: flex-end;
++  justify-content: center;
++  padding: 200px 0 64px;
++  box-sizing: border-box;
++  overflow: visible;
++}
++.offers.offers--v2 .offers__items {
++  position: relative;
++  width: var(--offer-w, 490px);
++  height: var(--offer-h, 346px);
++  margin: 0 auto;
++  overflow: visible;
++}
++.offers.offers--v2 .offers__item {
++  position: absolute !important;
++  inset: 0 !important;
++  width: 100%;
++  height: 100%;
++  margin: 0 !important;
++  display: block !important;
++  opacity: 1 !important;
++  transform: none !important;
++  pointer-events: none;
++}
++.offers.offers--v2 .offers__item.is-front { pointer-events: auto; z-index: 5; }
++.offers.offers--v2 .offers__media {
++  position: absolute;
++  inset: 0;
++  border-radius: var(--offer-r, 16px);
++  overflow: hidden;
++  background: #f0f0eb;
++  transform-origin: center center;
++  will-change: transform;
++}
++.offers.offers--v2 .offers__media img {
++  position: absolute !important;
++  left: 0 !important;
++  top: 0 !important;
++  width: 100% !important;
++  height: 100% !important;
++  max-width: none;
++  aspect-ratio: auto !important;
++  object-fit: cover;
++  border-radius: 0;
++  transform-origin: center center;
++  will-change: transform, opacity;
++}
++.offers.offers--v2 .offers__text {
++  position: absolute;
++  top: 50%;
++  width: min(312px, 28vw);
++  padding: 0 !important;
++  z-index: 6;
++  will-change: transform, opacity;
++}
++.offers.offers--v2 .offers__item[data-side="left"] .offers__text {
++  right: calc(100% + 48px);
++  left: auto;
++  transform: translateY(-50%);
++}
++.offers.offers--v2 .offers__item[data-side="right"] .offers__text {
++  left: calc(100% + 48px);
++  right: auto;
++  transform: translateY(-50%);
++}
++.offers.offers--v2 .offers__text .btn { transition: none !important; }
++.offers.offers--v2 .offers__text > * { will-change: transform, opacity; }
++
++.offers-tune-v2 {
++  position: fixed; right: 16px; bottom: 16px; z-index: 1000; width: 280px;
++  max-height: calc(100vh - 32px); overflow: auto; padding: 14px 16px;
++  background: rgba(251, 251, 235, .96); color: #262626; border-radius: 10px;
++  box-shadow: 0 8px 30px rgba(0, 0, 0, .15); font: 12px/1.35 Manrope, sans-serif;
++}
++.offers-tune-v2 b { display: block; margin-bottom: 8px; font-size: 13px; }
++.offers-tune-v2 label { display: block; margin: 6px 0; }
++.offers-tune-v2 input { display: block; width: 100%; margin-top: 2px; }
++.offers-tune-v2 output { float: right; font-weight: 600; }
++.offers-tune-v2 .offers-tune__btns { display: flex; gap: 8px; margin-top: 10px; }
++.offers-tune-v2 button { flex: 1; padding: 6px 8px; border: 0; border-radius: 6px; background: #e3d9c1; cursor: pointer; font: inherit; }
++
++@media (max-width: 1279px) {
++  .offers.offers--v2 .offers__text {
++    top: auto;
++    bottom: calc(100% + 20px);
++    left: 50% !important;
++    right: auto !important;
++    width: min(420px, calc(100vw - 32px));
++    transform: translateX(-50%) !important;
++    text-align: center;
++  }
++  .offers.offers--v2 .offers__text .section-label,
++  .offers.offers--v2 .offers__text p { text-align: center; max-width: none; }
++  .offers.offers--v2 .offers__text .btn { margin-left: auto; margin-right: auto; }
++}
++@media (max-width: 599px) {
++  .offers.offers--v2 { padding: 48px 0 32px; }
++  .offers.offers--v2 .offers__stage { padding-top: 220px; }
++}
++@media (prefers-reduced-motion: reduce) {
++  .offers.offers--v2 { min-height: 0; display: block; }
++  .offers.offers--v2 .offers__items {
++    height: auto;
++    width: min(var(--offer-w, 490px), calc(100% - 32px));
++  }
++  .offers.offers--v2 .offers__item {
++    position: relative !important;
++    inset: auto !important;
++    height: auto;
++    margin: 0 0 28px !important;
++    pointer-events: auto;
++  }
++  .offers.offers--v2 .offers__media {
++    position: relative;
++    height: var(--offer-h, 346px);
++  }
++  .offers.offers--v2 .offers__text {
++    position: relative !important;
++    left: auto !important;
++    right: auto !important;
++    bottom: auto;
++    top: auto;
++    transform: none !important;
++    width: 100%;
++    margin-top: 16px;
++    opacity: 1 !important;
++  }
++}
+diff --git a/src/offers-v2.css b/src/offers-v2.css
+new file mode 100644
+--- a/src/offers-v2.css
++++ b/src/offers-v2.css
+@@ -0,0 +1,149 @@
++/* school-fix-v2: стек карточек как у Lassie FeaturesCarousel.
++   Размеры фото задаёт JS через --offer-w / --offer-h / --offer-r. */
++.offers.offers--v2 {
++  position: relative;
++  box-sizing: border-box;
++  padding: 72px 0 48px;
++  overflow: visible;
++  background: #f0f0eb;
++}
++.offers.offers--v2 > .container {
++  position: relative;
++  height: auto !important;
++  display: block;
++}
++.offers.offers--v2 .section-label,
++.offers.offers--v2 .section-title { position: relative; z-index: 2; text-align: center; }
++.offers.offers--v2 .offers__stage {
++  position: relative;
++  width: 100%;
++  min-height: calc(var(--offer-h, 346px) + 220px);
++  display: flex;
++  align-items: flex-end;
++  justify-content: center;
++  padding: 200px 0 64px;
++  box-sizing: border-box;
++  overflow: visible;
++}
++.offers.offers--v2 .offers__items {
++  position: relative;
++  width: var(--offer-w, 490px);
++  height: var(--offer-h, 346px);
++  margin: 0 auto;
++  overflow: visible;
++}
++.offers.offers--v2 .offers__item {
++  position: absolute !important;
++  inset: 0 !important;
++  width: 100%;
++  height: 100%;
++  margin: 0 !important;
++  display: block !important;
++  opacity: 1 !important;
++  transform: none !important;
++  pointer-events: none;
++}
++.offers.offers--v2 .offers__item.is-front { pointer-events: auto; z-index: 5; }
++.offers.offers--v2 .offers__media {
++  position: absolute;
++  inset: 0;
++  border-radius: var(--offer-r, 16px);
++  overflow: hidden;
++  background: #f0f0eb;
++  transform-origin: center center;
++  will-change: transform;
++}
++.offers.offers--v2 .offers__media img {
++  position: absolute !important;
++  left: 0 !important;
++  top: 0 !important;
++  width: 100% !important;
++  height: 100% !important;
++  max-width: none;
++  aspect-ratio: auto !important;
++  object-fit: cover;
++  border-radius: 0;
++  transform-origin: center center;
++  will-change: transform, opacity;
++}
++.offers.offers--v2 .offers__text {
++  position: absolute;
++  top: 50%;
++  width: min(312px, 28vw);
++  padding: 0 !important;
++  z-index: 6;
++  will-change: transform, opacity;
++}
++.offers.offers--v2 .offers__item[data-side="left"] .offers__text {
++  right: calc(100% + 48px);
++  left: auto;
++  transform: translateY(-50%);
++}
++.offers.offers--v2 .offers__item[data-side="right"] .offers__text {
++  left: calc(100% + 48px);
++  right: auto;
++  transform: translateY(-50%);
++}
++.offers.offers--v2 .offers__text .btn { transition: none !important; }
++.offers.offers--v2 .offers__text > * { will-change: transform, opacity; }
++
++.offers-tune-v2 {
++  position: fixed; right: 16px; bottom: 16px; z-index: 1000; width: 280px;
++  max-height: calc(100vh - 32px); overflow: auto; padding: 14px 16px;
++  background: rgba(251, 251, 235, .96); color: #262626; border-radius: 10px;
++  box-shadow: 0 8px 30px rgba(0, 0, 0, .15); font: 12px/1.35 Manrope, sans-serif;
++}
++.offers-tune-v2 b { display: block; margin-bottom: 8px; font-size: 13px; }
++.offers-tune-v2 label { display: block; margin: 6px 0; }
++.offers-tune-v2 input { display: block; width: 100%; margin-top: 2px; }
++.offers-tune-v2 output { float: right; font-weight: 600; }
++.offers-tune-v2 .offers-tune__btns { display: flex; gap: 8px; margin-top: 10px; }
++.offers-tune-v2 button { flex: 1; padding: 6px 8px; border: 0; border-radius: 6px; background: #e3d9c1; cursor: pointer; font: inherit; }
++
++@media (max-width: 1279px) {
++  .offers.offers--v2 .offers__text {
++    top: auto;
++    bottom: calc(100% + 20px);
++    left: 50% !important;
++    right: auto !important;
++    width: min(420px, calc(100vw - 32px));
++    transform: translateX(-50%) !important;
++    text-align: center;
++  }
++  .offers.offers--v2 .offers__text .section-label,
++  .offers.offers--v2 .offers__text p { text-align: center; max-width: none; }
++  .offers.offers--v2 .offers__text .btn { margin-left: auto; margin-right: auto; }
++}
++@media (max-width: 599px) {
++  .offers.offers--v2 { padding: 48px 0 32px; }
++  .offers.offers--v2 .offers__stage { padding-top: 220px; }
++}
++@media (prefers-reduced-motion: reduce) {
++  .offers.offers--v2 { min-height: 0; display: block; }
++  .offers.offers--v2 .offers__items {
++    height: auto;
++    width: min(var(--offer-w, 490px), calc(100% - 32px));
++  }
++  .offers.offers--v2 .offers__item {
++    position: relative !important;
++    inset: auto !important;
++    height: auto;
++    margin: 0 0 28px !important;
++    pointer-events: auto;
++  }
++  .offers.offers--v2 .offers__media {
++    position: relative;
++    height: var(--offer-h, 346px);
++  }
++  .offers.offers--v2 .offers__text {
++    position: relative !important;
++    left: auto !important;
++    right: auto !important;
++    bottom: auto;
++    top: auto;
++    transform: none !important;
++    width: 100%;
++    margin-top: 16px;
++    opacity: 1 !important;
++  }
++}
+diff --git a/src/offers-v2.js b/src/offers-v2.js
+new file mode 100644
+--- a/src/offers-v2.js
++++ b/src/offers-v2.js
+@@ -0,0 +1,308 @@
++/**
++ * school-fix-v2: стек «Возможности» по мотивам Lassie FeaturesCarousel.
++ * Зависимости: gsap и ScrollTrigger (libs.min.js).
++ * Подключать один раз, вместо старого блока .offers в common.js.
++ * Панель: ?tune=1, localStorage offers-v2-tune-v1.
++ * Фото не крутятся. Первая карточка оседает из scale .95 / y 10%.
++ * Задние: scale 1-0.15*depth, y (12-front)*depth %. Скролл — scrub, секция pin.
++ */
++document.addEventListener('DOMContentLoaded', function () {
++  if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') return;
++  gsap.registerPlugin(ScrollTrigger);
++  var section = document.querySelector('.offers');
++  if (!section || section.dataset.v2 === '1') return;
++  section.dataset.v2 = '1';
++  section.classList.add('offers--v2');
++  var items = gsap.utils.toArray(section.querySelectorAll('.offers__item'));
++  if (items.length < 3) return;
++
++  var DEFAULTS = {
++    scrub: 0.25,
++    scrollVh: 3,
++    pinDesktop: 2.2,
++    pinTablet: 3,
++    pinMobile: 2.5,
++    activeDur: 2,
++    exitDesktop: 3,
++    exitTablet: 2,
++    exitMobile: 3,
++    exitTextDesktop: 0.5,
++    exitTextTablet: 2,
++    exitTextMobile: 3,
++    textDur: 1,
++    textDurSmall: 2,
++    textFrom: 50,
++    btnStep: 0.1,
++    stackScale: 0.15,
++    stackY: 12,
++    introScale: 0.95,
++    introY: 10,
++    innerFrom: 1.05
++  };
++  var TUNE_KEY = 'offers-v2-tune-v1';
++  var tuneMode = /[?&]tune=1(&|$)/.test(location.search);
++  var cfg = {};
++  var key;
++  for (key in DEFAULTS) cfg[key] = DEFAULTS[key];
++  if (tuneMode) {
++    try {
++      var saved = JSON.parse(localStorage.getItem(TUNE_KEY) || '{}');
++      for (key in saved) if (key in cfg && typeof saved[key] === 'number' && isFinite(saved[key])) cfg[key] = saved[key];
++    } catch (e) {}
++  }
++  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
++
++  function bp() {
++    var w = window.innerWidth;
++    return w >= 1280 ? 'desktop' : w >= 1024 ? 'tablet' : 'mobile';
++  }
++  function cardBox() {
++    var w = window.innerWidth;
++    var width = w >= 1280 ? 490 : w >= 1024 ? 420 : Math.min(490, Math.max(240, w - 32));
++    return { w: width, h: Math.round(width * 346 / 490), r: w >= 1024 ? 16 : 12 };
++  }
++  function applyBox() {
++    var b = cardBox();
++    section.style.setProperty('--offer-w', b.w + 'px');
++    section.style.setProperty('--offer-h', b.h + 'px');
++    section.style.setProperty('--offer-r', b.r + 'px');
++  }
++
++  var itemsEl = section.querySelector('.offers__items');
++  var stage = document.createElement('div');
++  stage.className = 'offers__stage';
++  itemsEl.parentNode.insertBefore(stage, itemsEl);
++  stage.appendChild(itemsEl);
++
++  var cards = items.map(function (item, i) {
++    var img = item.querySelector('img');
++    var media = document.createElement('div');
++    media.className = 'offers__media';
++    img.parentNode.insertBefore(media, img);
++    media.appendChild(img);
++    item.dataset.side = i === 1 ? 'right' : 'left';
++    item.dataset.index = String(i);
++    var texts = gsap.utils.toArray(item.querySelectorAll('.offers__text > *')).filter(function (n) {
++      return !(n.classList && n.classList.contains('btn'));
++    });
++    var btn = item.querySelector('.offers__text .btn');
++    return { item: item, media: media, img: img, texts: texts, btn: btn, parts: btn ? texts.concat([btn]) : texts };
++  });
++
++  var built = [];
++  function destroy() {
++    built.forEach(function (t) { if (t && t.kill) t.kill(); });
++    built = [];
++    cards.forEach(function (c) {
++      gsap.set([c.media, c.img, c.parts], { clearProps: 'transform,opacity,visibility' });
++    });
++  }
++
++  function pinDistance() {
++    var b = bp();
++    var mult = b === 'desktop' ? cfg.pinDesktop : b === 'tablet' ? cfg.pinTablet : cfg.pinMobile;
++    return mult * window.innerHeight;
++  }
++  function exitMove() {
++    var b = bp();
++    return b === 'desktop' ? cfg.exitDesktop : b === 'tablet' ? cfg.exitTablet : cfg.exitMobile;
++  }
++  function exitText() {
++    var b = bp();
++    return b === 'desktop' ? cfg.exitTextDesktop : b === 'tablet' ? cfg.exitTextTablet : cfg.exitTextMobile;
++  }
++  function textDur() {
++    return bp() === 'desktop' ? cfg.textDur : cfg.textDurSmall;
++  }
++  function textAt() {
++    return bp() === 'desktop' ? 0.1 : 0;
++  }
++
++  function behind(card, index, front) {
++    var depth = index - front;
++    var tl = gsap.timeline({ defaults: { ease: 'none' } });
++    tl.to(card.media, {
++      scale: 1 - cfg.stackScale * depth,
++      yPercent: (cfg.stackY - front) * depth,
++      opacity: 1,
++      duration: cfg.activeDur
++    }, 0);
++    // Исходник Lassie ставит opacity видео 0.5-depth/5 (0.3 и 0.1) — на статичных фото стопка пропадает.
++    // Оставляем ободок читаемым, как на референс-кадре: 0.84 и 0.68.
++    tl.to(card.img, { opacity: depth <= 0 ? 1 : Math.max(0.62, 1 - 0.16 * depth), duration: cfg.activeDur }, 0);
++    tl.set(card.parts, { autoAlpha: 0 }, 0);
++    tl.to(card.parts, { yPercent: (90 - front) * depth, duration: cfg.activeDur }, 0);
++    return tl;
++  }
++  function active(card) {
++    var tl = gsap.timeline({ defaults: { ease: 'none' } });
++    var dur = textDur();
++    var at = textAt();
++    tl.to(card.media, { scale: 1, yPercent: 0, y: 0, opacity: 1, duration: cfg.activeDur }, 0);
++    tl.fromTo(card.img, { scale: cfg.innerFrom }, { scale: 1, opacity: 1, duration: cfg.activeDur, ease: 'none' }, 0);
++    card.texts.forEach(function (node, idx) {
++      tl.fromTo(node, { autoAlpha: 0, yPercent: cfg.textFrom }, {
++        autoAlpha: 1, yPercent: 0, duration: dur, ease: 'none', immediateRender: false
++      }, at + idx * cfg.btnStep);
++    });
++    if (card.btn) {
++      var lastStart = at + Math.max(0, card.texts.length - 1) * cfg.btnStep;
++      tl.fromTo(card.btn, { autoAlpha: 0, yPercent: cfg.textFrom }, {
++        autoAlpha: 1, yPercent: 0, duration: dur, ease: 'none', immediateRender: false
++      }, lastStart + cfg.btnStep);
++    }
++    tl.eventCallback('onUpdate', function () {
++      var on = tl.progress() > 0.15 && tl.progress() < 0.92;
++      card.item.classList.toggle('is-front', on);
++    });
++    return tl;
++  }
++  function exit(card) {
++    var tl = gsap.timeline({ defaults: { ease: 'none' } });
++    tl.to(card.parts, {
++      autoAlpha: 0,
++      yPercent: bp() === 'desktop' ? -60 : -100,
++      duration: exitText()
++    }, 0);
++    tl.to(card.media, {
++      scale: 1,
++      yPercent: 0,
++      y: function () { return -window.innerHeight; },
++      duration: exitMove()
++    }, 0);
++    return tl;
++  }
++  function cardTimeline(i) {
++    var tl = gsap.timeline({ defaults: { ease: 'none' } });
++    var card = cards[i];
++    if (i === 0) {
++      tl.add(active(card), 0);
++      tl.add(exit(card));
++    } else if (i === 1) {
++      tl.add(behind(card, 1, 0), 0);
++      tl.add(active(card));
++      tl.add(exit(card));
++    } else {
++      tl.add(behind(card, 2, 0), 0);
++      tl.add(behind(card, 2, 1));
++      tl.add(active(card));
++    }
++    return tl;
++  }
++
++  function prime() {
++    applyBox();
++    gsap.set(cards[0].media, { scale: cfg.introScale, yPercent: cfg.introY, y: 0, opacity: 1 });
++    gsap.set(cards[0].img, { scale: cfg.innerFrom, opacity: 1 });
++    cards.slice(1).forEach(function (card, n) {
++      var depth = n + 1;
++      gsap.set(card.media, { scale: 1 - cfg.stackScale * depth, yPercent: cfg.stackY * depth, y: 0, opacity: 1 });
++      gsap.set(card.img, { scale: 1, opacity: Math.max(0.62, 1 - 0.16 * depth) });
++    });
++    cards.forEach(function (card, i) {
++      gsap.set(card.parts, { autoAlpha: 0, yPercent: i === 0 ? cfg.textFrom : 50 });
++      card.item.classList.toggle('is-front', i === 0);
++    });
++    cards[0].item.style.zIndex = '3';
++    cards[1].item.style.zIndex = '2';
++    cards[2].item.style.zIndex = '1';
++  }
++
++  function build() {
++    destroy();
++    prime();
++    if (reduce) {
++      cards.forEach(function (card) {
++        gsap.set(card.media, { scale: 1, yPercent: 0, y: 0, opacity: 1 });
++        gsap.set(card.img, { scale: 1, opacity: 1 });
++        gsap.set(card.parts, { autoAlpha: 1, yPercent: 0 });
++        card.item.classList.add('is-front');
++      });
++      return;
++    }
++    var pin = ScrollTrigger.create({
++      trigger: stage,
++      start: 'center center',
++      end: function () { return '+=' + pinDistance(); },
++      pin: true,
++      anticipatePin: 1,
++      invalidateOnRefresh: true
++    });
++    var master = gsap.timeline({
++      defaults: { ease: 'none' },
++      scrollTrigger: {
++        trigger: stage,
++        start: function () { return window.innerWidth < 1024 ? 'top center-=100' : 'top center+=100'; },
++        end: function () { return '+=' + (cfg.scrollVh * window.innerHeight); },
++        scrub: cfg.scrub,
++        invalidateOnRefresh: true
++      }
++    });
++    cards.forEach(function (_, i) { master.add(cardTimeline(i), 0); });
++    built.push(pin, master);
++  }
++
++  build();
++  window.addEventListener('resize', function () { applyBox(); });
++  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { ScrollTrigger.refresh(); });
++
++  window.__offersV2 = {
++    get cfg() { return cfg; },
++    rebuild: build,
++    timeline: function () { return built[1]; }
++  };
++
++  if (!tuneMode) return;
++  var fields = [
++    ['scrub', 'Сглаживание скролла, с', 0, 1, 0.05],
++    ['scrollVh', 'Длина скролла, экраны', 1, 6, 0.1],
++    ['pinDesktop', 'Pin на десктопе, экраны', 1, 5, 0.1],
++    ['activeDur', 'Фаза карточки', 0.4, 4, 0.1],
++    ['exitDesktop', 'Уход карточки', 0.4, 5, 0.1],
++    ['stackScale', 'Масштаб шага стопки', 0, 0.4, 0.01],
++    ['stackY', 'Сдвиг стопки, %', 0, 40, 1],
++    ['introScale', 'Старт 1-й карточки, scale', 0.7, 1, 0.01],
++    ['introY', 'Старт 1-й карточки, %', 0, 40, 1],
++    ['textDur', 'Текст: длительность', 0.2, 3, 0.1],
++    ['textFrom', 'Текст: старт, %', 0, 100, 1],
++    ['btnStep', 'Кнопка: шаг', 0, 0.6, 0.01]
++  ];
++  var panel = document.createElement('div');
++  panel.className = 'offers-tune-v2';
++  var html = '<b>Анимация стопки v2</b>';
++  fields.forEach(function (f) {
++    html += '<label>' + f[1] + ' <output data-o="' + f[0] + '"></output><input type="range" data-k="' + f[0] + '" min="' + f[2] + '" max="' + f[3] + '" step="' + f[4] + '"></label>';
++  });
++  html += '<div class="offers-tune__btns"><button type="button" data-a="copy">Скопировать настройки</button><button type="button" data-a="reset">Сброс</button></div>';
++  panel.innerHTML = html;
++  document.body.appendChild(panel);
++  function paint() {
++    fields.forEach(function (f) {
++      panel.querySelector('[data-k="' + f[0] + '"]').value = cfg[f[0]];
++      panel.querySelector('[data-o="' + f[0] + '"]').textContent = cfg[f[0]];
++    });
++  }
++  function save() {
++    try { localStorage.setItem(TUNE_KEY, JSON.stringify(cfg)); } catch (e) {}
++    paint();
++    build();
++    ScrollTrigger.refresh();
++  }
++  panel.addEventListener('input', function (e) {
++    var k = e.target.getAttribute('data-k');
++    if (!k) return;
++    cfg[k] = Number(e.target.value);
++    save();
++  });
++  panel.addEventListener('click', function (e) {
++    var a = e.target.getAttribute('data-a');
++    if (a === 'reset') { for (var k in DEFAULTS) cfg[k] = DEFAULTS[k]; save(); }
++    if (a === 'copy') {
++      var text = JSON.stringify(cfg, null, 2);
++      if (navigator.clipboard) navigator.clipboard.writeText(text);
++      e.target.textContent = 'Скопировано';
++      setTimeout(function () { e.target.textContent = 'Скопировать настройки'; }, 1200);
++    }
++  });
++  paint();
++});
