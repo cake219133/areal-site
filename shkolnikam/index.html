@@ -63,33 +63,29 @@
 </div>
 
 <main id="main">
-  <section class="sk-opp" id="opportunities">
-    <header class="sk-opp__intro">
-      <p class="sk-caps sk-opp__eye">Что мы предлагаем</p>
-      <h2 class="sk-h2">Возможности для будущих<br>специалистов</h2>
-    </header>
-    <div class="sk-opp__pin" id="oppPin">
-      <div class="sk-opp__sticky" id="oppSticky">
-        <div class="sk-opp__world" id="oppWorld">
-          <figure class="sk-shot" data-shot="a"><img src="assets/photos/photo-a.png" alt="Группа школьников в офисе у панорамного окна"></figure>
-          <figure class="sk-shot" data-shot="b"><img src="assets/photos/photo-b.png" alt="Встреча со специалистом: женщина с микрофоном и школьники"></figure>
-          <figure class="sk-shot" data-shot="c"><img src="assets/photos/photo-c.png" alt="День открытых дверей: подростки у стойки"></figure>
-          <div class="sk-cap sk-cap--l" data-cap="0">
-            <p class="sk-caps">Экскурсии в офисы</p>
-            <p>Экскурсии в&nbsp;офисы компании и&nbsp;на&nbsp;производственные объекты&nbsp;— возможность увидеть работу предприятий изнутри</p>
-            <a class="sk-btn sk-btn--gold" href="#events">записаться на экскурсию</a>
-          </div>
-          <div class="sk-cap sk-cap--r" data-cap="2">
-            <p class="sk-caps">знакомства с экспертами</p>
-            <p>Профориентационные встречи в&nbsp;школах регионов присутствия с&nbsp;действующими специалистами горной индустрии</p>
-            <a class="sk-btn sk-btn--gold" href="#events">Подробнее</a>
-          </div>
-          <div class="sk-cap sk-cap--l" data-cap="4">
-            <p class="sk-caps">программа «профессионалитет»</p>
-            <p>Дни открытых дверей в&nbsp;Бурятии, Забайкалье, на&nbsp;Камчатке и&nbsp;в&nbsp;Республике Тыва с&nbsp;презентацией программ обучения и&nbsp;гарантированным трудоустройством на&nbsp;наших предприятиях</p>
-            <a class="sk-btn sk-btn--gold" href="#events">Подробнее</a>
-          </div>
-        </div>
+  <header class="sk-opp__intro" id="opportunities">
+    <p class="sk-caps sk-opp__eye">Что мы предлагаем</p>
+    <h2 class="sk-h2">Возможности для будущих<br>специалистов</h2>
+  </header>
+  <section class="sk-stage" id="oppStage" aria-roledescription="карусель" aria-label="Возможности для будущих специалистов">
+    <div class="sk-stage__frame" id="oppFrame">
+      <figure class="sk-shot" data-shot="a"><img src="assets/photos/photo-a.png" alt="Группа школьников в офисе у панорамного окна"></figure>
+      <figure class="sk-shot" data-shot="b"><img src="assets/photos/photo-b.png" alt="Встреча со специалистом: женщина с микрофоном и школьники"></figure>
+      <figure class="sk-shot" data-shot="c"><img src="assets/photos/photo-c.png" alt="День открытых дверей: подростки у стойки"></figure>
+      <div class="sk-cap sk-cap--l" data-cap="0">
+        <p class="sk-caps sk-linehost">Экскурсии в офисы</p>
+        <p class="sk-linehost">Экскурсии в офисы компании и на производственные объекты — возможность увидеть работу предприятий изнутри</p>
+        <a class="sk-btn sk-btn--gold sk-linehost" href="#events">записаться на экскурсию</a>
+      </div>
+      <div class="sk-cap sk-cap--r" data-cap="2">
+        <p class="sk-caps sk-linehost">знакомства с экспертами</p>
+        <p class="sk-linehost">Профориентационные встречи в школах регионов присутствия с действующими специалистами горной индустрии</p>
+        <a class="sk-btn sk-btn--gold sk-linehost" href="#events">Подробнее</a>
+      </div>
+      <div class="sk-cap sk-cap--l" data-cap="4">
+        <p class="sk-caps sk-linehost">программа «профессионалитет»</p>
+        <p class="sk-linehost">Дни открытых дверей в Бурятии, Забайкалье, на Камчатке и в Республике Тыва с презентацией программ обучения и гарантированным трудоустройством на наших предприятиях</p>
+        <a class="sk-btn sk-btn--gold sk-linehost" href="#events">Подробнее</a>
       </div>
     </div>
   </section>
@@ -136,24 +132,24 @@
       <div class="sk-track" id="eventTrack" tabindex="0"></div>
       <div class="sk-slider" id="eventNav">
         <button type="button" data-dir="-1" aria-label="Назад"><img src="assets/icons/contacts-svg-08.svg" alt="" width="20" height="20"></button>
-        <button type="button" data-dir="1" aria-label="Вперед"><img src="assets/icons/contacts-svg-20.svg" alt="" width="20" height="20"></button>
+        <button type="button" data-dir="1" aria-label="Вперед"><img src="assets/icons/icon-right.svg" alt="" width="20" height="20"></button>
       </div>
     </div>
   </section>
 
   <section class="sk-social" id="contacts">
     <div class="sk-social__stage">
-      <div class="sk-social__back sk-social__back--l" aria-hidden="true"><img alt="" id="socBackL"></div>
-      <div class="sk-social__back sk-social__back--r" aria-hidden="true"><img alt="" id="socBackR"></div>
+      <div class="sk-social__back sk-social__back--l" aria-hidden="true"><img src="assets/contacts/raw-4.jpeg" alt=""></div>
+      <div class="sk-social__back sk-social__back--r" aria-hidden="true"><img src="assets/contacts/raw-5.jpeg" alt=""></div>
       <article class="sk-social__card">
-        <img id="socImg" alt="">
+        <img src="assets/photos/photo-a.png" alt="Амбассадоры Ареала в офисе">
         <div class="sk-social__fade"></div>
         <div class="sk-social__caption">
-          <p class="sk-caps" id="socMeta"></p>
-          <p id="socText"></p>
+          <p class="sk-caps">14 мая · телеграм-канал @arealjobs</p>
+          <p>В мае 11 лучших амбассадоров посетили офис управляющей компании и приняли участие в командных играх</p>
         </div>
       </article>
-      <div class="sk-dots" id="socDots" role="tablist" aria-label="Записи из социальных сетей"></div>
+      <div class="sk-dots" aria-hidden="true"><i class="is-on"></i><i></i><i></i></div>
     </div>
     <div class="sk-social__info">
       <p class="sk-caps">Остаемся на связи</p>
@@ -197,6 +193,30 @@
   </div>
 </footer>
 
+<aside class="sk-tune" id="skTune" hidden>
+  <p class="sk-tune__title">Настройка шагов</p>
+  <label>Длительность шага, мс <input id="tnDur" type="range" min="200" max="1600" step="20"></label>
+  <label>Кривая
+    <select id="tnEase">
+      <option value="cubic">cubic — ease-out</option>
+      <option value="quart">quart — ease-out</option>
+      <option value="expo">expo — ease-out</option>
+      <option value="bezier">своя cubic-bezier</option>
+    </select>
+  </label>
+  <label>Bezier (x1 y1 x2 y2) <input id="tnBezier" type="text" value="0, 0, 0.16, 1"></label>
+  <label>Пауза между шагами, мс <input id="tnLock" type="range" min="0" max="800" step="10"></label>
+  <label>Сдвиг карточек <input id="tnTravel" type="range" min="0" max="1.6" step="0.05"></label>
+  <label>Масштаб поворота <input id="tnRot" type="range" min="0" max="1.6" step="0.05"></label>
+  <label>Текст: длительность, мс <input id="tnLine" type="range" min="200" max="1600" step="20"></label>
+  <label>Текст: шаг, мс <input id="tnStagger" type="range" min="0" max="240" step="5"></label>
+  <label>Текст: сдвиг, px <input id="tnOffset" type="range" min="0" max="80" step="1"></label>
+  <div class="sk-tune__row">
+    <button type="button" id="tnReset">Сбросить</button>
+    <button type="button" id="tnCopy">Скопировать настройки</button>
+  </div>
+  <output id="tnOut"></output>
+</aside>
 <script src="app.js"></script>
 </body>
 </html>
