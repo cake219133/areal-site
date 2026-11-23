@@ -21,6 +21,21 @@
     margin-top: auto;
     margin-bottom: auto;
   }
+  .offers--steps,
+  .offers--steps > .container,
+  .offers--steps .offers__items,
+  .offers--steps .offers__item {
+    overflow: visible;
+  }
+  .offers--steps .offers__item,
+  .offers--steps .offers__item img {
+    opacity: 1 !important;
+  }
+  /* У .btn в общих стилях transition: all 500ms — из-за него кнопка догоняла текст ещё полсекунды. */
+  .offers--steps .offers__text,
+  .offers--steps .offers__text * {
+    transition: none;
+  }
 }
 .offers-tune {
   position: fixed; right: 16px; bottom: 16px; z-index: 1000; width: 280px;

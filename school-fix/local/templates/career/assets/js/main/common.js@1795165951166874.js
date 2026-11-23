@@ -2415,8 +2415,13 @@ $('.search__suggestions').each(function () {
    2) 1 скролл (щелчок колеса / жест тачпада / свайп / клавиша) = 1 экран-шаг,
       блок занимает весь экран, на краях управление отдаётся обычному скроллу;
    3) текст появляется как на lassie.ai: снизу на 30px + проявление,
-      expo.out ≈ cubic-bezier(.19,1,.22,1), 0.7s, шаг 0.1s; уходит вверх,
-      при скролле назад всё зеркально; prefers-reduced-motion — без анимации;
+      expo.out ≈ cubic-bezier(.19,1,.22,1). Кнопка едет вместе с текстом,
+      без отдельной длинной задержки: вся подпись, включая кнопку,
+      заканчивается примерно за 0.5–0.6s. Уходит зеркально;
+      prefers-reduced-motion — без анимации;
+   3b) фото не проявляется из прозрачности: opacity всегда 1.
+      Новая карточка выезжает снизу из-за нижнего края вьюпорта
+      (по повёрнутому габариту) и так же уезжает обратно;
    4) отступ от заголовка считается по повёрнутым габаритам картинок
       (минимум 40px на 1440, пропорционально меньше на узких экранах).
    Настройка таймингов: ?tune=1 в адресе страницы открывает панель.
@@ -2433,14 +2438,13 @@ document.addEventListener('DOMContentLoaded', function () {
     cardDuration: 0.9,   // c, длительность движения карточек
     cardEase: 'expo.out',// быстро в начале, мягко доезжает
     stepLock: 0.7,       // c, через сколько принимается следующий шаг
-    enterFrom: 40,       // %, откуда (снизу, в % высоты фото) выезжает новая карточка
-    textDuration: 0.7,   // c
-    textStagger: 0.1,    // c, задержка между строками/элементами текста
+    textDuration: 0.48,  // c; вместе со шагом укладка подписи укладывается в ~0.55s
+    textStagger: 0.04,   // c, между частями текста; кнопка этот шаг не ждёт
     textOffset: 30,      // px, сдвиг текста при появлении/уходе
-    textDelay: 0.1,      // c, задержка появления нового текста после начала шага
+    textDelay: 0,        // c, общая задержка подписи после начала шага
     gap: 40              // px на 1440, мин. зазор от повёрнутых фото до заголовка/низа экрана
   };
-  var TUNE_KEY = 'offers-steps-tune-v1';
+  var TUNE_KEY = 'offers-steps-tune-v2';
   var tuneMode = /[?&]tune=1(&|$)/.test(window.location.search);
   var cfg = {};
   var key;
@@ -2484,17 +2488,43 @@ document.addEventListener('DOMContentLoaded', function () {
     function buildPoses() {
       var wide = window.innerWidth > 1220;
       var w = imgs[0].offsetWidth;
-      var h = imgs[0].offsetHeight;
       var k = wide ? w / 490 : 1;
-      var rest = { x: 0, y: 0, rotation: 0, opacity: 1 };
-      var below = { x: 0, y: h * cfg.enterFrom / 100, rotation: 0, opacity: 0 };
-      var p1 = wide ? { x: 0, y: -40 * k, rotation: 10, opacity: 1 } : { x: -8, y: -37, rotation: 8, opacity: 1 };
-      var p2 = wide ? { x: -36 * k, y: 21 * k, rotation: -10, opacity: 1 } : { x: -21, y: 27, rotation: -10, opacity: 1 };
+      var rest = { x: 0, y: 0, rotation: 0 };
+      var below = { x: 0, y: 0, rotation: 0, off: true };
+      var p1 = wide ? { x: 0, y: -40 * k, rotation: 10 } : { x: -8, y: -37, rotation: 8 };
+      var p2 = wide ? { x: -36 * k, y: 21 * k, rotation: -10 } : { x: -21, y: 27, rotation: -10 };
       POSE = [
         [rest, below, below],
         [p1, rest, below],
         [p1, p2, rest]
       ];
+    }
+
+    function isButton(node) {
+      return !!(node.classList && node.classList.contains('btn'));
+    }
+
+    // y, при котором повёрнутый габарит фото целиком ниже нижнего края вьюпорта.
+    function offscreenY(img, rotation) {
+      var rect = img.getBoundingClientRect();
+      var curY = parseFloat(gsap.getProperty(img, 'y'));
+      if (!isFinite(curY)) curY = 0;
+      // Центр, как если бы секция уже стояла вверху экрана (шаг её туда прижимает).
+      var center = rect.top + rect.height / 2 - curY - section.getBoundingClientRect().top;
+      var w = img.offsetWidth;
+      var h = img.offsetHeight;
+      var rad = Math.abs(rotation || 0) * Math.PI / 180;
+      var half = (h * Math.abs(Math.cos(rad)) + w * Math.abs(Math.sin(rad))) / 2;
+      return Math.ceil(window.innerHeight - center + half + 16);
+    }
+
+    function poseTarget(img, p) {
+      return {
+        x: p.x,
+        y: p.off ? offscreenY(img, p.rotation) : p.y,
+        rotation: p.rotation,
+        opacity: 1
+      };
     }
 
     function setText(i, shown, dir, instant) {
@@ -2506,14 +2536,23 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
       if (shown) {
-        gsap.fromTo(el, { y: dir > 0 ? off : -off, autoAlpha: 0 }, {
-          y: 0, autoAlpha: 1, duration: cfg.textDuration, ease: TEXT_EASE,
-          stagger: cfg.textStagger, delay: cfg.textDelay
+        el.forEach(function (node, idx) {
+          // Кнопка не ждёт предыдущие строки: стартует вместе с первой.
+          var delay = cfg.textDelay + (isButton(node) ? 0 : idx * cfg.textStagger);
+          gsap.fromTo(node, { y: dir > 0 ? off : -off, autoAlpha: 0 }, {
+            y: 0, autoAlpha: 1, duration: cfg.textDuration, ease: TEXT_EASE,
+            delay: delay, overwrite: 'auto'
+          });
         });
       } else {
-        gsap.to(dir > 0 ? el : el.slice().reverse(), {
-          y: dir > 0 ? -off : off, autoAlpha: 0, duration: cfg.textDuration * 0.6,
-          ease: TEXT_EASE, stagger: cfg.textStagger * 0.5
+        var list = dir > 0 ? el : el.slice().reverse();
+        list.forEach(function (node, idx) {
+          var order = isButton(node) ? 0 : idx;
+          gsap.to(node, {
+            y: dir > 0 ? -off : off, autoAlpha: 0,
+            duration: Math.min(cfg.textDuration, 0.4), ease: TEXT_EASE,
+            delay: order * cfg.textStagger * 0.5, overwrite: 'auto'
+          });
         });
       }
     }
@@ -2524,7 +2563,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function applyStep(i) {
       gsap.killTweensOf(imgs);
-      imgs.forEach(function (img, n) { gsap.set(img, POSE[i][n]); });
+      imgs.forEach(function (img, n) { gsap.set(img, poseTarget(img, POSE[i][n])); });
       items.forEach(function (item, n) { setText(n, n === i, 1, true); });
       setPointer(i);
       section.setAttribute('data-step', String(i));
@@ -2538,9 +2577,11 @@ document.addEventListener('DOMContentLoaded', function () {
       step = next;
       var dur = reduce ? 0 : cfg.cardDuration;
       imgs.forEach(function (img, n) {
-        var p = POSE[next][n];
-        gsap.to(img, { x: p.x, y: p.y, rotation: p.rotation, duration: dur, ease: cfg.cardEase, overwrite: 'auto' });
-        gsap.to(img, { opacity: p.opacity, duration: dur * 0.45, ease: 'power1.out', overwrite: false });
+        var p = poseTarget(img, POSE[next][n]);
+        gsap.to(img, {
+          x: p.x, y: p.y, rotation: p.rotation, opacity: 1,
+          duration: dur, ease: cfg.cardEase, overwrite: 'auto'
+        });
       });
       setText(prev, false, dir);
       setText(next, true, dir);
@@ -2570,7 +2611,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var overBottom = 0;
         POSE.forEach(function (pose) {
           pose.forEach(function (p, n) {
-            if (!p.opacity) return;
+            if (p.off) return;
             var rad = Math.abs(p.rotation) * Math.PI / 180;
             var half = (h * Math.cos(rad) + w * Math.sin(rad)) / 2;
             var cy = imgs[n].offsetTop + h / 2 + p.y;
@@ -2762,7 +2803,6 @@ document.addEventListener('DOMContentLoaded', function () {
     var fields = [
       ['cardDuration', 'Карточки: длительность, с', 0, 2, 0.05],
       ['stepLock', 'Пауза до след. шага, с', 0, 2, 0.05],
-      ['enterFrom', 'Выезд снизу, % высоты фото', 0, 100, 5],
       ['textDuration', 'Текст: длительность, с', 0, 2, 0.05],
       ['textStagger', 'Текст: шаг между строками, с', 0, 0.5, 0.01],
       ['textDelay', 'Текст: задержка, с', 0, 1, 0.05],
