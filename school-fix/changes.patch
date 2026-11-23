@@ -1,0 +1,940 @@
+diff --git a/local/templates/career/assets/js/main/common.js b/local/templates/career/assets/js/main/common.js
+--- a/local/templates/career/assets/js/main/common.js
++++ b/local/templates/career/assets/js/main/common.js
+@@ -2408,6 +2408,409 @@
+   checkSticky();
+ })();
+ 
++/* ==========================================================================
++   «Возможности для будущих специалистов» (.offers)
++   Правки по ТЗ дизайнера:
++   1) карточки поворачиваются одним плавным твином, без промежуточной остановки;
++   2) 1 скролл (щелчок колеса / жест тачпада / свайп / клавиша) = 1 экран-шаг,
++      блок занимает весь экран, на краях управление отдаётся обычному скроллу;
++   3) текст появляется как на lassie.ai: снизу на 30px + проявление,
++      expo.out ≈ cubic-bezier(.19,1,.22,1), 0.7s, шаг 0.1s; уходит вверх,
++      при скролле назад всё зеркально; prefers-reduced-motion — без анимации;
++   4) отступ от заголовка считается по повёрнутым габаритам картинок
++      (минимум 40px на 1440, пропорционально меньше на узких экранах).
++   Настройка таймингов: ?tune=1 в адресе страницы открывает панель.
++   ========================================================================== */
++document.addEventListener('DOMContentLoaded', function () {
++  if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') return;
++  gsap.registerPlugin(ScrollTrigger);
++  var section = document.querySelector('.offers');
++  if (!section) return;
++  var items = gsap.utils.toArray('.offers__item');
++  if (items.length < 3) return;
++
++  var OFFERS_DEFAULTS = {
++    cardDuration: 0.9,   // c, длительность движения карточек
++    cardEase: 'expo.out',// быстро в начале, мягко доезжает
++    stepLock: 0.7,       // c, через сколько принимается следующий шаг
++    enterFrom: 40,       // %, откуда (снизу, в % высоты фото) выезжает новая карточка
++    textDuration: 0.7,   // c
++    textStagger: 0.1,    // c, задержка между строками/элементами текста
++    textOffset: 30,      // px, сдвиг текста при появлении/уходе
++    textDelay: 0.1,      // c, задержка появления нового текста после начала шага
++    gap: 40              // px на 1440, мин. зазор от повёрнутых фото до заголовка/низа экрана
++  };
++  var TUNE_KEY = 'offers-steps-tune-v1';
++  var tuneMode = /[?&]tune=1(&|$)/.test(window.location.search);
++  var cfg = {};
++  var key;
++  for (key in OFFERS_DEFAULTS) cfg[key] = OFFERS_DEFAULTS[key];
++  if (tuneMode) {
++    try {
++      var saved = JSON.parse(window.localStorage.getItem(TUNE_KEY) || '{}');
++      for (key in saved) if (key in cfg) cfg[key] = saved[key];
++    } catch (e) {}
++  }
++  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++  var TEXT_EASE = 'expo.out'; // = cubic-bezier(.19, 1, .22, 1)
++
++  function textParts(item) {
++    return gsap.utils.toArray(item.querySelectorAll('.offers__text > *'));
++  }
++
++  var api = { layout: function () {} };
++  var mm = gsap.matchMedia();
++
++  /* ---------- ≥768: полноэкранный блок, шаги ---------- */
++  mm.add('(min-width: 768px)', function () {
++    var imgs = items.map(function (item) { return item.querySelector('img'); });
++    var parts = items.map(textParts);
++    var title = section.querySelector('.section-title');
++    var container = section.querySelector('.container');
++    var wrap = section.querySelector('.offers__items');
++    var last = items.length - 1;
++    var step = 0;
++    var locked = false;
++    var moving = false;
++    var busyUntil = 0;
++    var lastTop = section.getBoundingClientRect().top;
++    var POSE = [];
++
++    section.classList.add('offers--steps');
++    gsap.set(items, { opacity: 1 });
++    gsap.set(items.map(function (i) { return i.querySelector('.offers__text'); }), { clearProps: 'transform,opacity' });
++
++    // Позы карточек на каждом шаге (те же значения, что были в макете/старом коде).
++    function buildPoses() {
++      var wide = window.innerWidth > 1220;
++      var w = imgs[0].offsetWidth;
++      var h = imgs[0].offsetHeight;
++      var k = wide ? w / 490 : 1;
++      var rest = { x: 0, y: 0, rotation: 0, opacity: 1 };
++      var below = { x: 0, y: h * cfg.enterFrom / 100, rotation: 0, opacity: 0 };
++      var p1 = wide ? { x: 0, y: -40 * k, rotation: 10, opacity: 1 } : { x: -8, y: -37, rotation: 8, opacity: 1 };
++      var p2 = wide ? { x: -36 * k, y: 21 * k, rotation: -10, opacity: 1 } : { x: -21, y: 27, rotation: -10, opacity: 1 };
++      POSE = [
++        [rest, below, below],
++        [p1, rest, below],
++        [p1, p2, rest]
++      ];
++    }
++
++    function setText(i, shown, dir, instant) {
++      var el = parts[i];
++      gsap.killTweensOf(el);
++      var off = cfg.textOffset;
++      if (instant || reduce) {
++        gsap.set(el, { y: 0, autoAlpha: shown ? 1 : 0 });
++        return;
++      }
++      if (shown) {
++        gsap.fromTo(el, { y: dir > 0 ? off : -off, autoAlpha: 0 }, {
++          y: 0, autoAlpha: 1, duration: cfg.textDuration, ease: TEXT_EASE,
++          stagger: cfg.textStagger, delay: cfg.textDelay
++        });
++      } else {
++        gsap.to(dir > 0 ? el : el.slice().reverse(), {
++          y: dir > 0 ? -off : off, autoAlpha: 0, duration: cfg.textDuration * 0.6,
++          ease: TEXT_EASE, stagger: cfg.textStagger * 0.5
++        });
++      }
++    }
++
++    function setPointer(i) {
++      items.forEach(function (item, n) { item.style.pointerEvents = n === i ? 'auto' : 'none'; });
++    }
++
++    function applyStep(i) {
++      gsap.killTweensOf(imgs);
++      imgs.forEach(function (img, n) { gsap.set(img, POSE[i][n]); });
++      items.forEach(function (item, n) { setText(n, n === i, 1, true); });
++      setPointer(i);
++      section.setAttribute('data-step', String(i));
++    }
++
++    function goTo(next) {
++      next = Math.max(0, Math.min(last, next));
++      if (next === step) return;
++      var dir = next > step ? 1 : -1;
++      var prev = step;
++      step = next;
++      var dur = reduce ? 0 : cfg.cardDuration;
++      imgs.forEach(function (img, n) {
++        var p = POSE[next][n];
++        gsap.to(img, { x: p.x, y: p.y, rotation: p.rotation, duration: dur, ease: cfg.cardEase, overwrite: 'auto' });
++        gsap.to(img, { opacity: p.opacity, duration: dur * 0.45, ease: 'power1.out', overwrite: false });
++      });
++      setText(prev, false, dir);
++      setText(next, true, dir);
++      setPointer(next);
++      section.setAttribute('data-step', String(next));
++      busyUntil = performance.now() + (reduce ? 150 : cfg.stepLock * 1000);
++    }
++
++    // Отступы: зазор от повёрнутых габаритов фото до заголовка и низа экрана.
++    function layout() {
++      imgs.forEach(function (img) { img.style.width = ''; });
++      var vw = window.innerWidth;
++      var vh = window.innerHeight;
++      var gap = Math.max(20, cfg.gap * Math.min(1, vw / 1440));
++      for (var pass = 0; pass < 3; pass++) {
++        wrap.style.minHeight = '0px';
++        buildPoses();
++        var w = imgs[0].offsetWidth;
++        var h = imgs[0].offsetHeight;
++        var contentH = 0;
++        items.forEach(function (item) {
++          Array.prototype.forEach.call(item.children, function (c) {
++            contentH = Math.max(contentH, c.offsetTop + c.offsetHeight);
++          });
++        });
++        var overTop = 0;
++        var overBottom = 0;
++        POSE.forEach(function (pose) {
++          pose.forEach(function (p, n) {
++            if (!p.opacity) return;
++            var rad = Math.abs(p.rotation) * Math.PI / 180;
++            var half = (h * Math.cos(rad) + w * Math.sin(rad)) / 2;
++            var cy = imgs[n].offsetTop + h / 2 + p.y;
++            overTop = Math.max(overTop, half - cy);
++            overBottom = Math.max(overBottom, cy + half - contentH);
++          });
++        });
++        wrap.style.minHeight = contentH + 'px';
++        title.style.marginBottom = Math.ceil(overTop + gap) + 'px';
++        container.style.paddingBottom = Math.ceil(overBottom + gap) + 'px';
++        var excess = section.offsetHeight - vh;
++        if (excess <= 1 || vw <= 1220 || w <= 360) break;
++        // Низкий экран: уменьшаем фото, чтобы шаг целиком помещался в экран
++        var nw = Math.max(360, w - excess * 1.25 * (w / h));
++        imgs.forEach(function (img) { img.style.width = nw + 'px'; });
++      }
++      applyStep(step);
++      if (locked) window.scrollTo(0, absTop());
++    }
++    api.layout = function () { layout(); ScrollTrigger.refresh(); };
++
++    function absTop() { return section.getBoundingClientRect().top + window.pageYOffset; }
++
++    var scrollTween = null;
++    function scrollToY(y, dur, done) {
++      moving = true;
++      if (scrollTween) scrollTween.kill();
++      var proxy = { y: window.pageYOffset };
++      scrollTween = gsap.to(proxy, {
++        y: y, duration: reduce ? 0 : dur, ease: 'power3.out',
++        onUpdate: function () { window.scrollTo(0, proxy.y); },
++        onComplete: function () {
++          window.scrollTo(0, y);
++          moving = false;
++          lastTop = section.getBoundingClientRect().top;
++          if (done) done();
++        }
++      });
++    }
++    function enter(i, animated) {
++      if (step !== i) { step = i; applyStep(i); }
++      locked = true;
++      busyUntil = performance.now() + 250;
++      if (animated) scrollToY(absTop(), 0.6, function () { busyUntil = performance.now() + 150; });
++      else { window.scrollTo(0, absTop()); lastTop = 0; }
++    }
++    function leave(dir) {
++      locked = false;
++      var y = dir > 0 ? absTop() + section.offsetHeight : absTop() - window.innerHeight * 0.6;
++      scrollToY(Math.max(0, y), 0.7);
++    }
++
++    function onScroll() {
++      var top = section.getBoundingClientRect().top;
++      if (moving) return;
++      if (locked) {
++        // прыжок по якорю / перетаскивание скроллбара — отпускаем блок
++        if (Math.abs(top) > window.innerHeight * 0.5) locked = false;
++        else if (Math.abs(top) > 1) window.scrollTo(0, absTop());
++        lastTop = section.getBoundingClientRect().top;
++        return;
++      }
++      if (lastTop > 1 && top <= 1) enter(0, false);          // въехали сверху
++      else if (lastTop < -1 && top >= -1) enter(last, false); // вернулись снизу
++      lastTop = top;
++    }
++
++    var lastWheel = 0;
++    var lastAbs = 0;
++    var consumed = false;
++    function onWheel(e) {
++      if (e.ctrlKey || (e.target.closest && e.target.closest('.offers-tune'))) return;
++      var dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * window.innerHeight : e.deltaY;
++      var dir = dy > 0 ? 1 : dy < 0 ? -1 : 0;
++      var abs = Math.abs(dy);
++      var now = performance.now();
++      var top = section.getBoundingClientRect().top;
++      var vh = window.innerHeight;
++      if (!locked && !moving) {
++        if (dir > 0 && top > 1 && top < vh * 0.6) { e.preventDefault(); enter(0, true); consumed = true; lastWheel = now; lastAbs = abs; return; }
++        if (dir < 0 && top < -1 && top > -vh * 0.6) { e.preventDefault(); enter(last, true); consumed = true; lastWheel = now; lastAbs = abs; return; }
++        if (Math.abs(top) > 1) return;
++        locked = true;
++      }
++      if (!locked) return; // уходим анимированным скроллом — не мешаем
++      // Один жест = один шаг: инерцию тачпада гасим, новый жест — пауза >140мс или резкий разгон
++      var idle = now >= busyUntil && !moving;
++      if (now - lastWheel > 140) consumed = false;
++      else if (idle && abs >= 12 && abs > lastAbs * 1.4) consumed = false;
++      lastWheel = now;
++      lastAbs = abs;
++      if (consumed || abs < 2 || !dir || !idle) { e.preventDefault(); return; }
++      if ((dir > 0 && step === last) || (dir < 0 && step === 0)) {
++        locked = false; // край блока: отдаём событие обычному скроллу
++        consumed = true;
++        return;
++      }
++      e.preventDefault();
++      consumed = true;
++      goTo(step + dir);
++    }
++
++    function onKey(e) {
++      if (!locked || moving || e.altKey || e.metaKey || e.ctrlKey) return;
++      if (e.target.closest && e.target.closest('input, textarea, select, [contenteditable], .offers-tune')) return;
++      var k = e.key;
++      var dir = (k === 'ArrowDown' || k === 'PageDown' || (k === ' ' && !e.shiftKey)) ? 1
++        : (k === 'ArrowUp' || k === 'PageUp' || (k === ' ' && e.shiftKey)) ? -1 : 0;
++      if (!dir) return;
++      e.preventDefault();
++      if (performance.now() < busyUntil) return;
++      if ((dir > 0 && step === last) || (dir < 0 && step === 0)) leave(dir);
++      else goTo(step + dir);
++    }
++
++    var ty0 = 0;
++    var tx0 = 0;
++    var tAxis = null;
++    function onTouchStart(e) {
++      if (e.touches.length !== 1) { tAxis = 'none'; return; }
++      ty0 = e.touches[0].clientY; tx0 = e.touches[0].clientX; tAxis = null;
++    }
++    function onTouchMove(e) {
++      if (!locked || tAxis === 'none') return;
++      var dx = e.touches[0].clientX - tx0;
++      var dy = e.touches[0].clientY - ty0;
++      if (!tAxis && Math.sqrt(dx * dx + dy * dy) > 8) tAxis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
++      if (tAxis === 'y' || moving) e.preventDefault();
++    }
++    function onTouchEnd(e) {
++      if (!locked || tAxis !== 'y') return;
++      var dy = ty0 - e.changedTouches[0].clientY;
++      if (Math.abs(dy) < 40 || performance.now() < busyUntil || moving) return;
++      var dir = dy > 0 ? 1 : -1;
++      if ((dir > 0 && step === last) || (dir < 0 && step === 0)) leave(dir);
++      else goTo(step + dir);
++    }
++    function onResize() { layout(); }
++
++    layout();
++    window.addEventListener('scroll', onScroll, { passive: true });
++    window.addEventListener('wheel', onWheel, { passive: false });
++    window.addEventListener('keydown', onKey);
++    window.addEventListener('touchstart', onTouchStart, { passive: true });
++    window.addEventListener('touchmove', onTouchMove, { passive: false });
++    window.addEventListener('touchend', onTouchEnd, { passive: true });
++    window.addEventListener('resize', onResize);
++    window.addEventListener('load', api.layout);
++    if (document.fonts && document.fonts.ready) document.fonts.ready.then(api.layout);
++    ScrollTrigger.refresh();
++
++    window.__offers = { goTo: goTo, get step() { return step; }, get locked() { return locked; }, cfg: cfg, layout: api.layout };
++
++    return function () {
++      window.removeEventListener('scroll', onScroll);
++      window.removeEventListener('wheel', onWheel);
++      window.removeEventListener('keydown', onKey);
++      window.removeEventListener('touchstart', onTouchStart);
++      window.removeEventListener('touchmove', onTouchMove);
++      window.removeEventListener('touchend', onTouchEnd);
++      window.removeEventListener('resize', onResize);
++      window.removeEventListener('load', api.layout);
++      if (scrollTween) scrollTween.kill();
++      gsap.killTweensOf(imgs);
++      parts.forEach(function (p) { gsap.killTweensOf(p); gsap.set(p, { clearProps: 'all' }); });
++      gsap.set(imgs, { clearProps: 'all' });
++      gsap.set(items, { clearProps: 'opacity,pointerEvents' });
++      [title, container, wrap].forEach(function (el) { el.removeAttribute('style'); });
++      section.classList.remove('offers--steps');
++      section.removeAttribute('data-step');
++      api.layout = function () {};
++    };
++  });
++
++  /* ---------- <768: список, текст проявляется при прокрутке ---------- */
++  mm.add('(max-width: 767px)', function () {
++    if (reduce) return;
++    items.forEach(function (item) {
++      var p = textParts(item);
++      gsap.fromTo(p, { y: cfg.textOffset, autoAlpha: 0 }, {
++        y: 0, autoAlpha: 1, duration: cfg.textDuration, ease: TEXT_EASE, stagger: cfg.textStagger,
++        scrollTrigger: { trigger: item.querySelector('.offers__text'), start: 'top 88%', toggleActions: 'play none none reverse' }
++      });
++    });
++  });
++
++  /* ---------- панель настройки (?tune=1) ---------- */
++  if (tuneMode) {
++    var fields = [
++      ['cardDuration', 'Карточки: длительность, с', 0, 2, 0.05],
++      ['stepLock', 'Пауза до след. шага, с', 0, 2, 0.05],
++      ['enterFrom', 'Выезд снизу, % высоты фото', 0, 100, 5],
++      ['textDuration', 'Текст: длительность, с', 0, 2, 0.05],
++      ['textStagger', 'Текст: шаг между строками, с', 0, 0.5, 0.01],
++      ['textDelay', 'Текст: задержка, с', 0, 1, 0.05],
++      ['textOffset', 'Текст: сдвиг, px', 0, 100, 1],
++      ['gap', 'Зазор фото ↔ заголовок, px', 0, 120, 2]
++    ];
++    var eases = ['expo.out', 'power4.out', 'power3.out', 'power2.out', 'circ.out', 'sine.out', 'back.out(1.2)'];
++    var panel = document.createElement('div');
++    panel.className = 'offers-tune';
++    var html = '<b>Анимация «Возможности»</b>';
++    fields.forEach(function (f) {
++      html += '<label>' + f[1] + ' <output data-o="' + f[0] + '"></output><input type="range" data-k="' + f[0] + '" min="' + f[2] + '" max="' + f[3] + '" step="' + f[4] + '"></label>';
++    });
++    html += '<label>Кривая карточек <select data-k="cardEase">' + eases.map(function (e) { return '<option>' + e + '</option>'; }).join('') + '</select></label>';
++    html += '<div class="offers-tune__btns"><button type="button" data-a="copy">Скопировать настройки</button><button type="button" data-a="reset">Сброс</button></div>';
++    panel.innerHTML = html;
++    document.body.appendChild(panel);
++    var paint = function () {
++      fields.forEach(function (f) {
++        panel.querySelector('[data-k="' + f[0] + '"]').value = cfg[f[0]];
++        panel.querySelector('[data-o="' + f[0] + '"]').textContent = cfg[f[0]];
++      });
++      panel.querySelector('select').value = cfg.cardEase;
++    };
++    var save = function () {
++      try { window.localStorage.setItem(TUNE_KEY, JSON.stringify(cfg)); } catch (e) {}
++      paint();
++      api.layout();
++    };
++    panel.addEventListener('input', function (e) {
++      var k = e.target.getAttribute('data-k');
++      if (!k) return;
++      cfg[k] = k === 'cardEase' ? e.target.value : Number(e.target.value);
++      save();
++    });
++    panel.addEventListener('click', function (e) {
++      var a = e.target.getAttribute('data-a');
++      if (a === 'reset') { for (var k in OFFERS_DEFAULTS) cfg[k] = OFFERS_DEFAULTS[k]; save(); }
++      if (a === 'copy') {
++        var text = JSON.stringify(cfg, null, 2);
++        if (navigator.clipboard) navigator.clipboard.writeText(text);
++        e.target.textContent = 'Скопировано';
++        setTimeout(function () { e.target.textContent = 'Скопировать настройки'; }, 1200);
++      }
++    });
++    paint();
++  }
++});
+ $(document).on('click', '.document-dropdown__btn', function () {
+   var btn = $(this);
+   var dropdown = btn.closest('.document-dropdown');
+diff --git a/school/index.html b/school/index.html
+--- a/school/index.html
++++ b/school/index.html
+@@ -1,13 +1,14 @@
+ <!DOCTYPE html>
+ <html lang="ru">
+ <head>
+-<title>Ареал. Школьникам</title>
++<meta name="robots" content="noindex, nofollow">
++    <title>Ареал. Школьникам</title>
+     <meta charset="utf-8">
+     <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+     <link rel="shortcut icon" href="../local/templates/career/assets/img/favicon.svg" type="image/x-icon">
+-    <meta name="robots" content="index,follow">
++    <meta name="robots" content="noindex, nofollow">
+     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+-<meta name="robots" content="index, follow" />
++<meta name="robots" content="noindex, nofollow" />
+ <link rel="canonical" href="index.html" />
+ <script data-skip-moving="true">(function(w, d, n) {var cl = "bx-core";var ht = d.documentElement;var htc = ht ? ht.className : undefined;if (htc === undefined || htc.indexOf(cl) !== -1){return;}var ua = n.userAgent;if (/(iPad;)|(iPhone;)/i.test(ua)){cl += " bx-ios";}else if (/Windows/i.test(ua)){cl += ' bx-win';}else if (/Macintosh/i.test(ua)){cl += " bx-mac";}else if (/Linux/i.test(ua) && !/Android/i.test(ua)){cl += " bx-linux";}else if (/Android/i.test(ua)){cl += " bx-android";}cl += (/(ipad|iphone|android|mobile|touch)/i.test(ua) ? " bx-touch" : " bx-no-touch");cl += w.devicePixelRatio && w.devicePixelRatio >= 2? " bx-retina": " bx-no-retina";if (/AppleWebKit/.test(ua)){cl += " bx-chrome";}else if (/Opera/.test(ua)){cl += " bx-opera";}else if (/Firefox/.test(ua)){cl += " bx-firefox";}ht.className = htc ? htc + " " + cl : cl;})(window, document, navigator);</script>
+ 
+@@ -17,6 +18,7 @@
+ <link href="../local/templates/career/assets/css/global.css@1795173152203267.css" type="text/css"  data-template-style="true"  rel="stylesheet" />
+ <link href="../local/templates/career/assets/css/common.css@1795165951105058.css" type="text/css"  data-template-style="true"  rel="stylesheet" />
+ <link href="../local/templates/career/assets/css/index.css@17951659511184249.css" type="text/css"  data-template-style="true"  rel="stylesheet" />
++<link href="../local/templates/career/assets/css/offers-steps.css" type="text/css" rel="stylesheet">
+ <link href="../local/templates/career/template_styles.css@1787755768136.css" type="text/css"  data-template-style="true"  rel="stylesheet" />
+ 
+ 
+diff --git a/local/templates/career/assets/css/offers-steps.css b/local/templates/career/assets/css/offers-steps.css
+new file mode 100644
+--- a/local/templates/career/assets/css/offers-steps.css
++++ b/local/templates/career/assets/css/offers-steps.css
+@@ -0,0 +1,36 @@
++/* «Возможности для будущих специалистов»: блок на весь экран (≥768px).
++   Зазоры (margin-bottom заголовка, padding-bottom контейнера, min-height
++   .offers__items) досчитывает JS по повёрнутым габаритам фото. */
++@media (min-width: 768px) {
++  .offers {
++    min-height: 100vh;
++    display: flex;
++    flex-direction: column;
++    box-sizing: border-box;
++    padding-top: clamp(64px, 12vh, 120px);
++  }
++  .offers > .container {
++    flex: 1 0 auto;
++    display: flex;
++    flex-direction: column;
++    height: auto;
++  }
++  .offers .section-label,
++  .offers .section-title { flex: none; }
++  .offers__items {
++    margin-top: auto;
++    margin-bottom: auto;
++  }
++}
++.offers-tune {
++  position: fixed; right: 16px; bottom: 16px; z-index: 1000; width: 280px;
++  max-height: calc(100vh - 32px); overflow: auto; padding: 14px 16px;
++  background: rgba(251, 251, 235, .96); color: #262626; border-radius: 10px;
++  box-shadow: 0 8px 30px rgba(0, 0, 0, .15); font: 12px/1.35 Manrope, sans-serif;
++}
++.offers-tune b { display: block; margin-bottom: 8px; font-size: 13px; }
++.offers-tune label { display: block; margin: 6px 0; }
++.offers-tune input, .offers-tune select { display: block; width: 100%; margin-top: 2px; }
++.offers-tune output { float: right; font-weight: 600; }
++.offers-tune__btns { display: flex; gap: 8px; margin-top: 10px; }
++.offers-tune button { flex: 1; padding: 6px 8px; border: 0; border-radius: 6px; background: #e3d9c1; cursor: pointer; font: inherit; }
+diff --git a/src/offers-steps.css b/src/offers-steps.css
+new file mode 100644
+--- a/src/offers-steps.css
++++ b/src/offers-steps.css
+@@ -0,0 +1,36 @@
++/* «Возможности для будущих специалистов»: блок на весь экран (≥768px).
++   Зазоры (margin-bottom заголовка, padding-bottom контейнера, min-height
++   .offers__items) досчитывает JS по повёрнутым габаритам фото. */
++@media (min-width: 768px) {
++  .offers {
++    min-height: 100vh;
++    display: flex;
++    flex-direction: column;
++    box-sizing: border-box;
++    padding-top: clamp(64px, 12vh, 120px);
++  }
++  .offers > .container {
++    flex: 1 0 auto;
++    display: flex;
++    flex-direction: column;
++    height: auto;
++  }
++  .offers .section-label,
++  .offers .section-title { flex: none; }
++  .offers__items {
++    margin-top: auto;
++    margin-bottom: auto;
++  }
++}
++.offers-tune {
++  position: fixed; right: 16px; bottom: 16px; z-index: 1000; width: 280px;
++  max-height: calc(100vh - 32px); overflow: auto; padding: 14px 16px;
++  background: rgba(251, 251, 235, .96); color: #262626; border-radius: 10px;
++  box-shadow: 0 8px 30px rgba(0, 0, 0, .15); font: 12px/1.35 Manrope, sans-serif;
++}
++.offers-tune b { display: block; margin-bottom: 8px; font-size: 13px; }
++.offers-tune label { display: block; margin: 6px 0; }
++.offers-tune input, .offers-tune select { display: block; width: 100%; margin-top: 2px; }
++.offers-tune output { float: right; font-weight: 600; }
++.offers-tune__btns { display: flex; gap: 8px; margin-top: 10px; }
++.offers-tune button { flex: 1; padding: 6px 8px; border: 0; border-radius: 6px; background: #e3d9c1; cursor: pointer; font: inherit; }
+diff --git a/src/offers-steps.js b/src/offers-steps.js
+new file mode 100644
+--- a/src/offers-steps.js
++++ b/src/offers-steps.js
+@@ -0,0 +1,411 @@
++/**
++ * Шаги блока «Возможности для будущих специалистов» (.offers).
++ * Зависимости: gsap и ScrollTrigger (в проекте они уже в libs.min.js).
++ * Разметка: section.offers > .offers__item > .offers__text + img, три карточки.
++ * Подключать один раз. Если этот же код уже вставлен в common.js, второй тег не нужен.
++ * Панель таймингов: добавить ?tune=1 к адресу страницы.
++ */
++
++/* ==========================================================================
++   «Возможности для будущих специалистов» (.offers)
++   Правки по ТЗ дизайнера:
++   1) карточки поворачиваются одним плавным твином, без промежуточной остановки;
++   2) 1 скролл (щелчок колеса / жест тачпада / свайп / клавиша) = 1 экран-шаг,
++      блок занимает весь экран, на краях управление отдаётся обычному скроллу;
++   3) текст появляется как на lassie.ai: снизу на 30px + проявление,
++      expo.out ≈ cubic-bezier(.19,1,.22,1), 0.7s, шаг 0.1s; уходит вверх,
++      при скролле назад всё зеркально; prefers-reduced-motion — без анимации;
++   4) отступ от заголовка считается по повёрнутым габаритам картинок
++      (минимум 40px на 1440, пропорционально меньше на узких экранах).
++   Настройка таймингов: ?tune=1 в адресе страницы открывает панель.
++   ========================================================================== */
++document.addEventListener('DOMContentLoaded', function () {
++  if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') return;
++  gsap.registerPlugin(ScrollTrigger);
++  var section = document.querySelector('.offers');
++  if (!section) return;
++  var items = gsap.utils.toArray('.offers__item');
++  if (items.length < 3) return;
++
++  var OFFERS_DEFAULTS = {
++    cardDuration: 0.9,   // c, длительность движения карточек
++    cardEase: 'expo.out',// быстро в начале, мягко доезжает
++    stepLock: 0.7,       // c, через сколько принимается следующий шаг
++    enterFrom: 40,       // %, откуда (снизу, в % высоты фото) выезжает новая карточка
++    textDuration: 0.7,   // c
++    textStagger: 0.1,    // c, задержка между строками/элементами текста
++    textOffset: 30,      // px, сдвиг текста при появлении/уходе
++    textDelay: 0.1,      // c, задержка появления нового текста после начала шага
++    gap: 40              // px на 1440, мин. зазор от повёрнутых фото до заголовка/низа экрана
++  };
++  var TUNE_KEY = 'offers-steps-tune-v1';
++  var tuneMode = /[?&]tune=1(&|$)/.test(window.location.search);
++  var cfg = {};
++  var key;
++  for (key in OFFERS_DEFAULTS) cfg[key] = OFFERS_DEFAULTS[key];
++  if (tuneMode) {
++    try {
++      var saved = JSON.parse(window.localStorage.getItem(TUNE_KEY) || '{}');
++      for (key in saved) if (key in cfg) cfg[key] = saved[key];
++    } catch (e) {}
++  }
++  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++  var TEXT_EASE = 'expo.out'; // = cubic-bezier(.19, 1, .22, 1)
++
++  function textParts(item) {
++    return gsap.utils.toArray(item.querySelectorAll('.offers__text > *'));
++  }
++
++  var api = { layout: function () {} };
++  var mm = gsap.matchMedia();
++
++  /* ---------- ≥768: полноэкранный блок, шаги ---------- */
++  mm.add('(min-width: 768px)', function () {
++    var imgs = items.map(function (item) { return item.querySelector('img'); });
++    var parts = items.map(textParts);
++    var title = section.querySelector('.section-title');
++    var container = section.querySelector('.container');
++    var wrap = section.querySelector('.offers__items');
++    var last = items.length - 1;
++    var step = 0;
++    var locked = false;
++    var moving = false;
++    var busyUntil = 0;
++    var lastTop = section.getBoundingClientRect().top;
++    var POSE = [];
++
++    section.classList.add('offers--steps');
++    gsap.set(items, { opacity: 1 });
++    gsap.set(items.map(function (i) { return i.querySelector('.offers__text'); }), { clearProps: 'transform,opacity' });
++
++    // Позы карточек на каждом шаге (те же значения, что были в макете/старом коде).
++    function buildPoses() {
++      var wide = window.innerWidth > 1220;
++      var w = imgs[0].offsetWidth;
++      var h = imgs[0].offsetHeight;
++      var k = wide ? w / 490 : 1;
++      var rest = { x: 0, y: 0, rotation: 0, opacity: 1 };
++      var below = { x: 0, y: h * cfg.enterFrom / 100, rotation: 0, opacity: 0 };
++      var p1 = wide ? { x: 0, y: -40 * k, rotation: 10, opacity: 1 } : { x: -8, y: -37, rotation: 8, opacity: 1 };
++      var p2 = wide ? { x: -36 * k, y: 21 * k, rotation: -10, opacity: 1 } : { x: -21, y: 27, rotation: -10, opacity: 1 };
++      POSE = [
++        [rest, below, below],
++        [p1, rest, below],
++        [p1, p2, rest]
++      ];
++    }
++
++    function setText(i, shown, dir, instant) {
++      var el = parts[i];
++      gsap.killTweensOf(el);
++      var off = cfg.textOffset;
++      if (instant || reduce) {
++        gsap.set(el, { y: 0, autoAlpha: shown ? 1 : 0 });
++        return;
++      }
++      if (shown) {
++        gsap.fromTo(el, { y: dir > 0 ? off : -off, autoAlpha: 0 }, {
++          y: 0, autoAlpha: 1, duration: cfg.textDuration, ease: TEXT_EASE,
++          stagger: cfg.textStagger, delay: cfg.textDelay
++        });
++      } else {
++        gsap.to(dir > 0 ? el : el.slice().reverse(), {
++          y: dir > 0 ? -off : off, autoAlpha: 0, duration: cfg.textDuration * 0.6,
++          ease: TEXT_EASE, stagger: cfg.textStagger * 0.5
++        });
++      }
++    }
++
++    function setPointer(i) {
++      items.forEach(function (item, n) { item.style.pointerEvents = n === i ? 'auto' : 'none'; });
++    }
++
++    function applyStep(i) {
++      gsap.killTweensOf(imgs);
++      imgs.forEach(function (img, n) { gsap.set(img, POSE[i][n]); });
++      items.forEach(function (item, n) { setText(n, n === i, 1, true); });
++      setPointer(i);
++      section.setAttribute('data-step', String(i));
++    }
++
++    function goTo(next) {
++      next = Math.max(0, Math.min(last, next));
++      if (next === step) return;
++      var dir = next > step ? 1 : -1;
++      var prev = step;
++      step = next;
++      var dur = reduce ? 0 : cfg.cardDuration;
++      imgs.forEach(function (img, n) {
++        var p = POSE[next][n];
++        gsap.to(img, { x: p.x, y: p.y, rotation: p.rotation, duration: dur, ease: cfg.cardEase, overwrite: 'auto' });
++        gsap.to(img, { opacity: p.opacity, duration: dur * 0.45, ease: 'power1.out', overwrite: false });
++      });
++      setText(prev, false, dir);
++      setText(next, true, dir);
++      setPointer(next);
++      section.setAttribute('data-step', String(next));
++      busyUntil = performance.now() + (reduce ? 150 : cfg.stepLock * 1000);
++    }
++
++    // Отступы: зазор от повёрнутых габаритов фото до заголовка и низа экрана.
++    function layout() {
++      imgs.forEach(function (img) { img.style.width = ''; });
++      var vw = window.innerWidth;
++      var vh = window.innerHeight;
++      var gap = Math.max(20, cfg.gap * Math.min(1, vw / 1440));
++      for (var pass = 0; pass < 3; pass++) {
++        wrap.style.minHeight = '0px';
++        buildPoses();
++        var w = imgs[0].offsetWidth;
++        var h = imgs[0].offsetHeight;
++        var contentH = 0;
++        items.forEach(function (item) {
++          Array.prototype.forEach.call(item.children, function (c) {
++            contentH = Math.max(contentH, c.offsetTop + c.offsetHeight);
++          });
++        });
++        var overTop = 0;
++        var overBottom = 0;
++        POSE.forEach(function (pose) {
++          pose.forEach(function (p, n) {
++            if (!p.opacity) return;
++            var rad = Math.abs(p.rotation) * Math.PI / 180;
++            var half = (h * Math.cos(rad) + w * Math.sin(rad)) / 2;
++            var cy = imgs[n].offsetTop + h / 2 + p.y;
++            overTop = Math.max(overTop, half - cy);
++            overBottom = Math.max(overBottom, cy + half - contentH);
++          });
++        });
++        wrap.style.minHeight = contentH + 'px';
++        title.style.marginBottom = Math.ceil(overTop + gap) + 'px';
++        container.style.paddingBottom = Math.ceil(overBottom + gap) + 'px';
++        var excess = section.offsetHeight - vh;
++        if (excess <= 1 || vw <= 1220 || w <= 360) break;
++        // Низкий экран: уменьшаем фото, чтобы шаг целиком помещался в экран
++        var nw = Math.max(360, w - excess * 1.25 * (w / h));
++        imgs.forEach(function (img) { img.style.width = nw + 'px'; });
++      }
++      applyStep(step);
++      if (locked) window.scrollTo(0, absTop());
++    }
++    api.layout = function () { layout(); ScrollTrigger.refresh(); };
++
++    function absTop() { return section.getBoundingClientRect().top + window.pageYOffset; }
++
++    var scrollTween = null;
++    function scrollToY(y, dur, done) {
++      moving = true;
++      if (scrollTween) scrollTween.kill();
++      var proxy = { y: window.pageYOffset };
++      scrollTween = gsap.to(proxy, {
++        y: y, duration: reduce ? 0 : dur, ease: 'power3.out',
++        onUpdate: function () { window.scrollTo(0, proxy.y); },
++        onComplete: function () {
++          window.scrollTo(0, y);
++          moving = false;
++          lastTop = section.getBoundingClientRect().top;
++          if (done) done();
++        }
++      });
++    }
++    function enter(i, animated) {
++      if (step !== i) { step = i; applyStep(i); }
++      locked = true;
++      busyUntil = performance.now() + 250;
++      if (animated) scrollToY(absTop(), 0.6, function () { busyUntil = performance.now() + 150; });
++      else { window.scrollTo(0, absTop()); lastTop = 0; }
++    }
++    function leave(dir) {
++      locked = false;
++      var y = dir > 0 ? absTop() + section.offsetHeight : absTop() - window.innerHeight * 0.6;
++      scrollToY(Math.max(0, y), 0.7);
++    }
++
++    function onScroll() {
++      var top = section.getBoundingClientRect().top;
++      if (moving) return;
++      if (locked) {
++        // прыжок по якорю / перетаскивание скроллбара — отпускаем блок
++        if (Math.abs(top) > window.innerHeight * 0.5) locked = false;
++        else if (Math.abs(top) > 1) window.scrollTo(0, absTop());
++        lastTop = section.getBoundingClientRect().top;
++        return;
++      }
++      if (lastTop > 1 && top <= 1) enter(0, false);          // въехали сверху
++      else if (lastTop < -1 && top >= -1) enter(last, false); // вернулись снизу
++      lastTop = top;
++    }
++
++    var lastWheel = 0;
++    var lastAbs = 0;
++    var consumed = false;
++    function onWheel(e) {
++      if (e.ctrlKey || (e.target.closest && e.target.closest('.offers-tune'))) return;
++      var dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * window.innerHeight : e.deltaY;
++      var dir = dy > 0 ? 1 : dy < 0 ? -1 : 0;
++      var abs = Math.abs(dy);
++      var now = performance.now();
++      var top = section.getBoundingClientRect().top;
++      var vh = window.innerHeight;
++      if (!locked && !moving) {
++        if (dir > 0 && top > 1 && top < vh * 0.6) { e.preventDefault(); enter(0, true); consumed = true; lastWheel = now; lastAbs = abs; return; }
++        if (dir < 0 && top < -1 && top > -vh * 0.6) { e.preventDefault(); enter(last, true); consumed = true; lastWheel = now; lastAbs = abs; return; }
++        if (Math.abs(top) > 1) return;
++        locked = true;
++      }
++      if (!locked) return; // уходим анимированным скроллом — не мешаем
++      // Один жест = один шаг: инерцию тачпада гасим, новый жест — пауза >140мс или резкий разгон
++      var idle = now >= busyUntil && !moving;
++      if (now - lastWheel > 140) consumed = false;
++      else if (idle && abs >= 12 && abs > lastAbs * 1.4) consumed = false;
++      lastWheel = now;
++      lastAbs = abs;
++      if (consumed || abs < 2 || !dir || !idle) { e.preventDefault(); return; }
++      if ((dir > 0 && step === last) || (dir < 0 && step === 0)) {
++        locked = false; // край блока: отдаём событие обычному скроллу
++        consumed = true;
++        return;
++      }
++      e.preventDefault();
++      consumed = true;
++      goTo(step + dir);
++    }
++
++    function onKey(e) {
++      if (!locked || moving || e.altKey || e.metaKey || e.ctrlKey) return;
++      if (e.target.closest && e.target.closest('input, textarea, select, [contenteditable], .offers-tune')) return;
++      var k = e.key;
++      var dir = (k === 'ArrowDown' || k === 'PageDown' || (k === ' ' && !e.shiftKey)) ? 1
++        : (k === 'ArrowUp' || k === 'PageUp' || (k === ' ' && e.shiftKey)) ? -1 : 0;
++      if (!dir) return;
++      e.preventDefault();
++      if (performance.now() < busyUntil) return;
++      if ((dir > 0 && step === last) || (dir < 0 && step === 0)) leave(dir);
++      else goTo(step + dir);
++    }
++
++    var ty0 = 0;
++    var tx0 = 0;
++    var tAxis = null;
++    function onTouchStart(e) {
++      if (e.touches.length !== 1) { tAxis = 'none'; return; }
++      ty0 = e.touches[0].clientY; tx0 = e.touches[0].clientX; tAxis = null;
++    }
++    function onTouchMove(e) {
++      if (!locked || tAxis === 'none') return;
++      var dx = e.touches[0].clientX - tx0;
++      var dy = e.touches[0].clientY - ty0;
++      if (!tAxis && Math.sqrt(dx * dx + dy * dy) > 8) tAxis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
++      if (tAxis === 'y' || moving) e.preventDefault();
++    }
++    function onTouchEnd(e) {
++      if (!locked || tAxis !== 'y') return;
++      var dy = ty0 - e.changedTouches[0].clientY;
++      if (Math.abs(dy) < 40 || performance.now() < busyUntil || moving) return;
++      var dir = dy > 0 ? 1 : -1;
++      if ((dir > 0 && step === last) || (dir < 0 && step === 0)) leave(dir);
++      else goTo(step + dir);
++    }
++    function onResize() { layout(); }
++
++    layout();
++    window.addEventListener('scroll', onScroll, { passive: true });
++    window.addEventListener('wheel', onWheel, { passive: false });
++    window.addEventListener('keydown', onKey);
++    window.addEventListener('touchstart', onTouchStart, { passive: true });
++    window.addEventListener('touchmove', onTouchMove, { passive: false });
++    window.addEventListener('touchend', onTouchEnd, { passive: true });
++    window.addEventListener('resize', onResize);
++    window.addEventListener('load', api.layout);
++    if (document.fonts && document.fonts.ready) document.fonts.ready.then(api.layout);
++    ScrollTrigger.refresh();
++
++    window.__offers = { goTo: goTo, get step() { return step; }, get locked() { return locked; }, cfg: cfg, layout: api.layout };
++
++    return function () {
++      window.removeEventListener('scroll', onScroll);
++      window.removeEventListener('wheel', onWheel);
++      window.removeEventListener('keydown', onKey);
++      window.removeEventListener('touchstart', onTouchStart);
++      window.removeEventListener('touchmove', onTouchMove);
++      window.removeEventListener('touchend', onTouchEnd);
++      window.removeEventListener('resize', onResize);
++      window.removeEventListener('load', api.layout);
++      if (scrollTween) scrollTween.kill();
++      gsap.killTweensOf(imgs);
++      parts.forEach(function (p) { gsap.killTweensOf(p); gsap.set(p, { clearProps: 'all' }); });
++      gsap.set(imgs, { clearProps: 'all' });
++      gsap.set(items, { clearProps: 'opacity,pointerEvents' });
++      [title, container, wrap].forEach(function (el) { el.removeAttribute('style'); });
++      section.classList.remove('offers--steps');
++      section.removeAttribute('data-step');
++      api.layout = function () {};
++    };
++  });
++
++  /* ---------- <768: список, текст проявляется при прокрутке ---------- */
++  mm.add('(max-width: 767px)', function () {
++    if (reduce) return;
++    items.forEach(function (item) {
++      var p = textParts(item);
++      gsap.fromTo(p, { y: cfg.textOffset, autoAlpha: 0 }, {
++        y: 0, autoAlpha: 1, duration: cfg.textDuration, ease: TEXT_EASE, stagger: cfg.textStagger,
++        scrollTrigger: { trigger: item.querySelector('.offers__text'), start: 'top 88%', toggleActions: 'play none none reverse' }
++      });
++    });
++  });
++
++  /* ---------- панель настройки (?tune=1) ---------- */
++  if (tuneMode) {
++    var fields = [
++      ['cardDuration', 'Карточки: длительность, с', 0, 2, 0.05],
++      ['stepLock', 'Пауза до след. шага, с', 0, 2, 0.05],
++      ['enterFrom', 'Выезд снизу, % высоты фото', 0, 100, 5],
++      ['textDuration', 'Текст: длительность, с', 0, 2, 0.05],
++      ['textStagger', 'Текст: шаг между строками, с', 0, 0.5, 0.01],
++      ['textDelay', 'Текст: задержка, с', 0, 1, 0.05],
++      ['textOffset', 'Текст: сдвиг, px', 0, 100, 1],
++      ['gap', 'Зазор фото ↔ заголовок, px', 0, 120, 2]
++    ];
++    var eases = ['expo.out', 'power4.out', 'power3.out', 'power2.out', 'circ.out', 'sine.out', 'back.out(1.2)'];
++    var panel = document.createElement('div');
++    panel.className = 'offers-tune';
++    var html = '<b>Анимация «Возможности»</b>';
++    fields.forEach(function (f) {
++      html += '<label>' + f[1] + ' <output data-o="' + f[0] + '"></output><input type="range" data-k="' + f[0] + '" min="' + f[2] + '" max="' + f[3] + '" step="' + f[4] + '"></label>';
++    });
++    html += '<label>Кривая карточек <select data-k="cardEase">' + eases.map(function (e) { return '<option>' + e + '</option>'; }).join('') + '</select></label>';
++    html += '<div class="offers-tune__btns"><button type="button" data-a="copy">Скопировать настройки</button><button type="button" data-a="reset">Сброс</button></div>';
++    panel.innerHTML = html;
++    document.body.appendChild(panel);
++    var paint = function () {
++      fields.forEach(function (f) {
++        panel.querySelector('[data-k="' + f[0] + '"]').value = cfg[f[0]];
++        panel.querySelector('[data-o="' + f[0] + '"]').textContent = cfg[f[0]];
++      });
++      panel.querySelector('select').value = cfg.cardEase;
++    };
++    var save = function () {
++      try { window.localStorage.setItem(TUNE_KEY, JSON.stringify(cfg)); } catch (e) {}
++      paint();
++      api.layout();
++    };
++    panel.addEventListener('input', function (e) {
++      var k = e.target.getAttribute('data-k');
++      if (!k) return;
++      cfg[k] = k === 'cardEase' ? e.target.value : Number(e.target.value);
++      save();
++    });
++    panel.addEventListener('click', function (e) {
++      var a = e.target.getAttribute('data-a');
++      if (a === 'reset') { for (var k in OFFERS_DEFAULTS) cfg[k] = OFFERS_DEFAULTS[k]; save(); }
++      if (a === 'copy') {
++        var text = JSON.stringify(cfg, null, 2);
++        if (navigator.clipboard) navigator.clipboard.writeText(text);
++        e.target.textContent = 'Скопировано';
++        setTimeout(function () { e.target.textContent = 'Скопировать настройки'; }, 1200);
++      }
++    });
++    paint();
++  }
++});

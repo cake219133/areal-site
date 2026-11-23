@@ -1,0 +1,36 @@
+/* «Возможности для будущих специалистов»: блок на весь экран (≥768px).
+   Зазоры (margin-bottom заголовка, padding-bottom контейнера, min-height
+   .offers__items) досчитывает JS по повёрнутым габаритам фото. */
+@media (min-width: 768px) {
+  .offers {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    padding-top: clamp(64px, 12vh, 120px);
+  }
+  .offers > .container {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+    height: auto;
+  }
+  .offers .section-label,
+  .offers .section-title { flex: none; }
+  .offers__items {
+    margin-top: auto;
+    margin-bottom: auto;
+  }
+}
+.offers-tune {
+  position: fixed; right: 16px; bottom: 16px; z-index: 1000; width: 280px;
+  max-height: calc(100vh - 32px); overflow: auto; padding: 14px 16px;
+  background: rgba(251, 251, 235, .96); color: #262626; border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, .15); font: 12px/1.35 Manrope, sans-serif;
+}
+.offers-tune b { display: block; margin-bottom: 8px; font-size: 13px; }
+.offers-tune label { display: block; margin: 6px 0; }
+.offers-tune input, .offers-tune select { display: block; width: 100%; margin-top: 2px; }
+.offers-tune output { float: right; font-weight: 600; }
+.offers-tune__btns { display: flex; gap: 8px; margin-top: 10px; }
+.offers-tune button { flex: 1; padding: 6px 8px; border: 0; border-radius: 6px; background: #e3d9c1; cursor: pointer; font: inherit; }

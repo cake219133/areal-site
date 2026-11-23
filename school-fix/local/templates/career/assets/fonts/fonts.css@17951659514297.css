@@ -1,0 +1,123 @@
+@font-face {
+  font-family: 'RF Dewi';
+  src: url("RFDewi-Light.eot");
+  src: local("RFDewi-Light"), local("RFDewi-Light"),
+    url("RFDewi-Light.eot") format("embedded-opentype"),
+    url("RFDewi-Light.woff") format("woff"),
+    url("RFDewi-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'RF Dewi';
+  src: url("RFDewi-Regular.eot");
+  src: local("RFDewi-Regular"), local("RFDewi-Regular"),
+    url("RFDewi-Regular.eot") format("embedded-opentype"),
+    url("RFDewi-Regular.woff") format("woff"),
+    url("RFDewi-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'RF Dewi';
+  src: url("RFDewi-Semibold.eot");
+  src: local("Avenir Next Cyr Bold"), local("RFDewi-Semibold"),
+    url("RFDewi-Semibold.eot") format("embedded-opentype"),
+    url("RFDewi-Semibold.woff") format("woff"),
+    url("RFDewi-Semibold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'RF Dewi';
+  src: url("RFDewi-Bold.eot");
+  src: local("RFDewi-Bold"), local("RFDewi-Bold"),
+    url("RFDewi-Bold.eot") format("embedded-opentype"),
+    url("RFDewi-Bold.woff") format("woff"),
+    url("RFDewi-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  src: url("Manrope-Regular.eot");
+  src: local("Manrope-Regular"), local("Manrope-Regular"),
+    url("Manrope-Regular") format("embedded-opentype"),
+    url("Manrope-Regular.woff") format("woff"),
+    url("Manrope-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Manrope';
+  src: url("Manrope-Medium.eot");
+  src: local("Manrope-Medium"), local("Manrope-Medium"),
+    url("Manrope-Medium") format("embedded-opentype"),
+    url("Manrope-Medium.woff") format("woff"),
+    url("Manrope-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Manrope';
+  src: url("Manrope-SemiBold.eot");
+  src: local("Manrope-SemiBold"), local("Manrope-SemiBold"),
+    url("Manrope-SemiBold") format("embedded-opentype"),
+    url("Manrope-SemiBold.woff") format("woff"),
+    url("Manrope-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Manrope';
+  src: url("Manrope-Bold.eot");
+  src: local("Manrope-Bold"), local("Manrope-Bold"),
+    url("Manrope-Bold") format("embedded-opentype"),
+    url("Manrope-Bold.woff") format("woff"),
+    url("Manrope-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+}
+/* @font-face {
+  font-family: 'CoFoTrial';
+  src: url("CoFoSansSemi-MonoTrial-Regular.eot");
+  src: local("CoFoSansSemi-MonoTrial-Regular"), local("CoFoSansSemi-MonoTrial-Regular"),
+    url("CoFoSansSemi-MonoTrial-Regular") format("embedded-opentype"),
+    url("CoFoSansSemi-MonoTrial-Regular.woff") format("woff"),
+    url("CoFoSansSemi-MonoTrial-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+} */
+@font-face {
+  font-family: 'CoFo Sans Semi-Mono';
+  src: url("CoFoSansSemi-Mono-Regular.eot");
+  src: local("CoFoSansSemi-Mono-Regular"), local("CoFoSansSemi-Mono-Regular"),
+    url("CoFoSansSemi-Mono-Regular") format("embedded-opentype"),
+    url("CoFoSansSemi-Mono-Regular.woff") format("woff"),
+    url("CoFoSansSemi-Mono-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'OceanicGroteskRound';
+  src: url("OceanicGrotesk-Regular.eot");
+  src: local("OceanicGrotesk-Regular"), local("OceanicGrotesk-Regular"),
+    url("OceanicGrotesk-Regular") format("embedded-opentype"),
+    url("OceanicGrotesk-Regular.woff") format("woff"),
+    url("OceanicGrotesk-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Areal Numeral Vol';
+  src: url("ArealNumeralVol.eot");
+  src: local("ArealNumeralVol"), local("ArealNumeralVol"),
+    url("ArealNumeralVol") format("embedded-opentype"),
+    url("ArealNumeralVol.woff") format("woff"),
+    url("ArealNumeralVol.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
