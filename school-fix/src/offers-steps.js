@@ -4,8 +4,8 @@
  * Разметка: section.offers > .offers__item > .offers__text + img, три карточки.
  * Подключать один раз. Если этот же код уже вставлен в common.js, второй тег не нужен.
  * Панель таймингов: добавить ?tune=1 к адресу страницы.
- * Фото не затухают: выезжают снизу экрана уже с opacity 1.
- * Кнопка подписи стартует вместе с текстом, вся подпись укладывается в ~0.5–0.6 с.
+ * Фото не затухают: выезжают снизу экрана уже с opacity 1. Движение карточки 1.2 с, пауза между шагами 1.0 с.
+ * Текст: 0.7 с, шаг 0.1 с, сдвиг 30px, expo.out. Кнопка — следующий шаг той же очереди (0.7 с / 0.1 с).
  */
 
 /* ==========================================================================
@@ -15,9 +15,10 @@
    2) 1 скролл (щелчок колеса / жест тачпада / свайп / клавиша) = 1 экран-шаг,
       блок занимает весь экран, на краях управление отдаётся обычному скроллу;
    3) текст появляется как на lassie.ai: снизу на 30px + проявление,
-      expo.out ≈ cubic-bezier(.19,1,.22,1). Кнопка едет вместе с текстом,
-      без отдельной длинной задержки: вся подпись, включая кнопку,
-      заканчивается примерно за 0.5–0.6s. Уходит зеркально;
+      expo.out ≈ cubic-bezier(.19,1,.22,1), 0.7s, шаг 0.1s, задержка 0.1s.
+      Кнопка — следующий элемент той же очереди: те же 30px, fade и expo.out,
+      длительность 0.7s, старт через 0.1s после старта последней строки.
+      transition у .btn внутри шага выключен. Уход зеркальный;
       prefers-reduced-motion — без анимации;
    3b) фото не проявляется из прозрачности: opacity всегда 1.
       Новая карточка выезжает снизу из-за нижнего края вьюпорта
@@ -35,16 +36,18 @@ document.addEventListener('DOMContentLoaded', function () {
   if (items.length < 3) return;
 
   var OFFERS_DEFAULTS = {
-    cardDuration: 0.9,   // c, длительность движения карточек
+    cardDuration: 1.2,   // c, длительность движения и поворота карточек
     cardEase: 'expo.out',// быстро в начале, мягко доезжает
-    stepLock: 0.7,       // c, через сколько принимается следующий шаг
-    textDuration: 0.48,  // c; вместе со шагом укладка подписи укладывается в ~0.55s
-    textStagger: 0.04,   // c, между частями текста; кнопка этот шаг не ждёт
+    stepLock: 1.0,       // c, пауза до следующего шага, чтобы скролл не обрезал движение
+    textDuration: 0.7,   // c
+    textStagger: 0.1,    // c, между строками текста
     textOffset: 30,      // px, сдвиг текста при появлении/уходе
-    textDelay: 0,        // c, общая задержка подписи после начала шага
+    textDelay: 0.1,      // c, задержка первой строки после начала шага
+    btnDuration: 0.7,    // c, то же появление, что у текста
+    btnStep: 0.1,        // c после старта последней строки
     gap: 40              // px на 1440, мин. зазор от повёрнутых фото до заголовка/низа экрана
   };
-  var TUNE_KEY = 'offers-steps-tune-v2';
+  var TUNE_KEY = 'offers-steps-tune-v3';
   var tuneMode = /[?&]tune=1(&|$)/.test(window.location.search);
   var cfg = {};
   var key;
@@ -60,6 +63,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function textParts(item) {
     return gsap.utils.toArray(item.querySelectorAll('.offers__text > *'));
+  }
+  function isButton(node) {
+    return !!(node.classList && node.classList.contains('btn'));
+  }
+  function splitParts(el) {
+    var texts = [];
+    var buttons = [];
+    el.forEach(function (node) { (isButton(node) ? buttons : texts).push(node); });
+    return { texts: texts, buttons: buttons };
   }
 
   var api = { layout: function () {} };
@@ -100,10 +112,6 @@ document.addEventListener('DOMContentLoaded', function () {
       ];
     }
 
-    function isButton(node) {
-      return !!(node.classList && node.classList.contains('btn'));
-    }
-
     // y, при котором повёрнутый габарит фото целиком ниже нижнего края вьюпорта.
     function offscreenY(img, rotation) {
       var rect = img.getBoundingClientRect();
@@ -129,29 +137,40 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function setText(i, shown, dir, instant) {
       var el = parts[i];
+      var group = splitParts(el);
       gsap.killTweensOf(el);
       var off = cfg.textOffset;
       if (instant || reduce) {
         gsap.set(el, { y: 0, autoAlpha: shown ? 1 : 0 });
         return;
       }
+      var fromY = dir > 0 ? off : -off;
+      var toY = dir > 0 ? -off : off;
       if (shown) {
-        el.forEach(function (node, idx) {
-          // Кнопка не ждёт предыдущие строки: стартует вместе с первой.
-          var delay = cfg.textDelay + (isButton(node) ? 0 : idx * cfg.textStagger);
-          gsap.fromTo(node, { y: dir > 0 ? off : -off, autoAlpha: 0 }, {
+        if (group.texts.length) {
+          gsap.fromTo(group.texts, { y: fromY, autoAlpha: 0 }, {
             y: 0, autoAlpha: 1, duration: cfg.textDuration, ease: TEXT_EASE,
-            delay: delay, overwrite: 'auto'
+            stagger: cfg.textStagger, delay: cfg.textDelay, overwrite: 'auto'
+          });
+        }
+        var lastStart = cfg.textDelay + Math.max(0, group.texts.length - 1) * cfg.textStagger;
+        group.buttons.forEach(function (node) {
+          gsap.fromTo(node, { y: fromY, autoAlpha: 0 }, {
+            y: 0, autoAlpha: 1, duration: cfg.btnDuration, ease: TEXT_EASE,
+            delay: lastStart + cfg.btnStep, overwrite: 'auto'
           });
         });
       } else {
-        var list = dir > 0 ? el : el.slice().reverse();
-        list.forEach(function (node, idx) {
-          var order = isButton(node) ? 0 : idx;
+        var texts = dir > 0 ? group.texts : group.texts.slice().reverse();
+        if (texts.length) {
+          gsap.to(texts, {
+            y: toY, autoAlpha: 0, duration: cfg.textDuration * 0.6, ease: TEXT_EASE,
+            stagger: cfg.textStagger * 0.5, overwrite: 'auto'
+          });
+        }
+        group.buttons.forEach(function (node) {
           gsap.to(node, {
-            y: dir > 0 ? -off : off, autoAlpha: 0,
-            duration: Math.min(cfg.textDuration, 0.4), ease: TEXT_EASE,
-            delay: order * cfg.textStagger * 0.5, overwrite: 'auto'
+            y: toY, autoAlpha: 0, duration: cfg.btnDuration * 0.6, ease: TEXT_EASE, overwrite: 'auto'
           });
         });
       }
@@ -390,10 +409,20 @@ document.addEventListener('DOMContentLoaded', function () {
   mm.add('(max-width: 767px)', function () {
     if (reduce) return;
     items.forEach(function (item) {
-      var p = textParts(item);
-      gsap.fromTo(p, { y: cfg.textOffset, autoAlpha: 0 }, {
-        y: 0, autoAlpha: 1, duration: cfg.textDuration, ease: TEXT_EASE, stagger: cfg.textStagger,
-        scrollTrigger: { trigger: item.querySelector('.offers__text'), start: 'top 88%', toggleActions: 'play none none reverse' }
+      var group = splitParts(textParts(item));
+      var trigger = item.querySelector('.offers__text');
+      if (group.texts.length) {
+        gsap.fromTo(group.texts, { y: cfg.textOffset, autoAlpha: 0 }, {
+          y: 0, autoAlpha: 1, duration: cfg.textDuration, ease: TEXT_EASE, stagger: cfg.textStagger,
+          scrollTrigger: { trigger: trigger, start: 'top 88%', toggleActions: 'play none none reverse' }
+        });
+      }
+      var lastStart = Math.max(0, group.texts.length - 1) * cfg.textStagger;
+      group.buttons.forEach(function (node) {
+        gsap.fromTo(node, { y: cfg.textOffset, autoAlpha: 0 }, {
+          y: 0, autoAlpha: 1, duration: cfg.btnDuration, ease: TEXT_EASE, delay: lastStart + cfg.btnStep,
+          scrollTrigger: { trigger: trigger, start: 'top 88%', toggleActions: 'play none none reverse' }
+        });
       });
     });
   });
@@ -407,6 +436,8 @@ document.addEventListener('DOMContentLoaded', function () {
       ['textStagger', 'Текст: шаг между строками, с', 0, 0.5, 0.01],
       ['textDelay', 'Текст: задержка, с', 0, 1, 0.05],
       ['textOffset', 'Текст: сдвиг, px', 0, 100, 1],
+      ['btnDuration', 'Кнопка: длительность, с', 0, 2, 0.05],
+      ['btnStep', 'Кнопка: шаг, с', 0, 1, 0.01],
       ['gap', 'Зазор фото ↔ заголовок, px', 0, 120, 2]
     ];
     var eases = ['expo.out', 'power4.out', 'power3.out', 'power2.out', 'circ.out', 'sine.out', 'back.out(1.2)'];
